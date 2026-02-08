@@ -63,13 +63,39 @@ let StockService = class StockService {
         });
     }
     async findByDate(date, page = 1, pageSize = 20) {
-        const skip = (page - 1) * pageSize;
-        const [data, total] = await this.stockRepository.findAndCount({
+        const allStocks = await this.stockRepository.find({
             where: { date },
-            order: { code: 'ASC' },
-            skip,
-            take: pageSize,
         });
+        const negativePEStocks = allStocks.filter(stock => (stock.peTTM || 0) < 0);
+        const negativePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) < 0);
+        const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
+        const positivePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) >= 0);
+        const peSorted = [...positivePEStocks].sort((a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity));
+        const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
+        const peRankMap = new Map();
+        const pbRankMap = new Map();
+        peSorted.forEach((stock, index) => {
+            peRankMap.set(stock.code, index + 1);
+        });
+        pbSorted.forEach((stock, index) => {
+            pbRankMap.set(stock.code, index + 1);
+        });
+        const stocksWithRank = allStocks.map(stock => {
+            const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
+            const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
+            return {
+                ...stock,
+                peRank,
+                pbRank,
+                totalRank: peRank + pbRank,
+            };
+        });
+        stocksWithRank.sort((a, b) => a.totalRank - b.totalRank);
+        const total = stocksWithRank.length;
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedData = stocksWithRank.slice(startIndex, endIndex);
+        const data = paginatedData.map(({ peRank, pbRank, totalRank, ...stock }) => stock);
         return {
             data,
             total,

@@ -67,14 +67,65 @@ export class StockService {
     pageSize: number;
     totalPages: number;
   }> {
-    const skip = (page - 1) * pageSize;
-    
-    const [data, total] = await this.stockRepository.findAndCount({
+    // 首先获取该日期的所有股票数据来计算排名
+    const allStocks = await this.stockRepository.find({
       where: { date },
-      order: { code: 'ASC' },
-      skip,
-      take: pageSize,
     });
+
+    // 分离PE/PB为负数的股票
+    const negativePEStocks = allStocks.filter(stock => (stock.peTTM || 0) < 0);
+    const negativePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) < 0);
+    
+    // 正数PE股票（用于排名）
+    const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
+    // 正数PB股票（用于排名）
+    const positivePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) >= 0);
+
+    // 计算PE排名（只对正数PE排序）
+    const peSorted = [...positivePEStocks].sort((a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity));
+    // 计算PB排名（只对正数PB排序）
+    const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
+
+    // 创建排名映射
+    const peRankMap = new Map<string, number>();
+    const pbRankMap = new Map<string, number>();
+
+    // 正数PE股票获得正常排名
+    peSorted.forEach((stock, index) => {
+      peRankMap.set(stock.code, index + 1);
+    });
+
+    // 正数PB股票获得正常排名
+    pbSorted.forEach((stock, index) => {
+      pbRankMap.set(stock.code, index + 1);
+    });
+
+    // 计算综合排名（PE排名 + PB排名）
+    const stocksWithRank = allStocks.map(stock => {
+      // PE为负数的排名设为9999
+      const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
+      // PB为负数的排名设为9999
+      const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
+      
+      return {
+        ...stock,
+        peRank,
+        pbRank,
+        totalRank: peRank + pbRank,
+      };
+    });
+
+    // 按综合排名升序排序
+    stocksWithRank.sort((a, b) => a.totalRank - b.totalRank);
+
+    // 分页
+    const total = stocksWithRank.length;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedData = stocksWithRank.slice(startIndex, endIndex);
+
+    // 移除排名字段，返回原始数据结构
+    const data = paginatedData.map(({ peRank, pbRank, totalRank, ...stock }) => stock);
 
     return {
       data,
