@@ -59,4 +59,11 @@ export class StockService {
       order: { date: 'DESC' },
     });
   }
+
+  async findByDate(date: string): Promise<StockDayPepbData[]> {
+    return this.stockRepository.find({
+      where: { date },
+      order: { code: 'ASC' },
+    });
+  }
 }

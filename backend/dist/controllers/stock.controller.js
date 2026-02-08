@@ -35,6 +35,9 @@ let StockController = class StockController {
     async getStockByDateRange(code, startDate, endDate) {
         return this.stockService.findByCodeAndDateRange(code, startDate, endDate);
     }
+    async getStocksByDate(date) {
+        return this.stockService.findByDate(date);
+    }
 };
 exports.StockController = StockController;
 __decorate([
@@ -72,6 +75,13 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], StockController.prototype, "getStockByDateRange", null);
+__decorate([
+    (0, common_1.Get)('date/:date'),
+    __param(0, (0, common_1.Param)('date')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], StockController.prototype, "getStocksByDate", null);
 exports.StockController = StockController = __decorate([
     (0, common_1.Controller)('api/stocks'),
     __metadata("design:paramtypes", [stock_service_1.StockService])

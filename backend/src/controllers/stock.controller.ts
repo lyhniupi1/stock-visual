@@ -38,4 +38,11 @@ export class StockController {
   ): Promise<StockDayPepbData[]> {
     return this.stockService.findByCodeAndDateRange(code, startDate, endDate);
   }
+
+  @Get('date/:date')
+  async getStocksByDate(
+    @Param('date') date: string,
+  ): Promise<StockDayPepbData[]> {
+    return this.stockService.findByDate(date);
+  }
 }

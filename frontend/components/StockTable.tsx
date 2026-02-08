@@ -7,33 +7,56 @@ const StockTable = () => {
   const [stocks, setStocks] = useState<SimplifiedStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+
+  // 获取今天的日期，格式为YYYY-MM-DD
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const loadStocks = async (date?: string) => {
+    try {
+      setLoading(true);
+      const data = await fetchSimplifiedStocks(date);
+      setStocks(data);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load stocks:', err);
+      setError('无法加载股票数据，请检查后端服务是否运行');
+      // 使用静态数据作为后备
+      setStocks([
+        { code: '000001', name: '平安银行', price: 10.25, change: '+2.5%', pe: 8.5, pb: 0.9, volume: '1.2亿' },
+        { code: '000002', name: '万科A', price: 8.76, change: '-1.2%', pe: 6.3, pb: 0.7, volume: '0.8亿' },
+        { code: '000858', name: '五粮液', price: 145.60, change: '+3.8%', pe: 25.4, pb: 5.2, volume: '2.1亿' },
+        { code: '600519', name: '贵州茅台', price: 1680.50, change: '+1.5%', pe: 32.1, pb: 8.7, volume: '0.5亿' },
+        { code: '300750', name: '宁德时代', price: 185.30, change: '-0.8%', pe: 18.9, pb: 3.4, volume: '3.2亿' },
+        { code: '002415', name: '海康威视', price: 32.45, change: '+0.9%', pe: 15.2, pb: 2.1, volume: '1.8亿' },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadStocks = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchSimplifiedStocks();
-        setStocks(data);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to load stocks:', err);
-        setError('无法加载股票数据，请检查后端服务是否运行');
-        // 使用静态数据作为后备
-        setStocks([
-          { code: '000001', name: '平安银行', price: 10.25, change: '+2.5%', pe: 8.5, pb: 0.9, volume: '1.2亿' },
-          { code: '000002', name: '万科A', price: 8.76, change: '-1.2%', pe: 6.3, pb: 0.7, volume: '0.8亿' },
-          { code: '000858', name: '五粮液', price: 145.60, change: '+3.8%', pe: 25.4, pb: 5.2, volume: '2.1亿' },
-          { code: '600519', name: '贵州茅台', price: 1680.50, change: '+1.5%', pe: 32.1, pb: 8.7, volume: '0.5亿' },
-          { code: '300750', name: '宁德时代', price: 185.30, change: '-0.8%', pe: 18.9, pb: 3.4, volume: '3.2亿' },
-          { code: '002415', name: '海康威视', price: 32.45, change: '+0.9%', pe: 15.2, pb: 2.1, volume: '1.8亿' },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStocks();
+    // 初始加载时使用今天的日期
+    const today = getTodayDate();
+    setSelectedDate(today);
+    loadStocks(today);
   }, []);
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = e.target.value;
+    setSelectedDate(newDate);
+    loadStocks(newDate);
+  };
+
+  const handleRefresh = () => {
+    loadStocks(selectedDate);
+  };
 
   if (loading) {
     return (
@@ -63,10 +86,40 @@ const StockTable = () => {
 
   return (
     <div className="overflow-x-auto">
+      <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+          <div>
+            <h3 className="text-lg font-bold text-blue-800">按日期查询股票数据</h3>
+            <p className="text-blue-700 text-sm">选择日期查看当日所有股票列表，而不是限制100条数据</p>
+          </div>
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+            <div className="flex items-center space-x-2">
+              <label htmlFor="date-picker" className="text-gray-700 font-medium">选择日期：</label>
+              <input
+                id="date-picker"
+                type="date"
+                value={selectedDate}
+                onChange={handleDateChange}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              刷新
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="mb-4 flex justify-between items-center">
         <div>
           <h3 className="text-lg font-bold text-gray-800">共 {stocks.length} 只股票</h3>
-          <p className="text-gray-600 text-sm">数据实时更新，点击股票代码查看详情</p>
+          <p className="text-gray-600 text-sm">日期：{selectedDate}，点击股票代码查看详情</p>
         </div>
         <div className="flex space-x-2">
           <input
@@ -74,9 +127,6 @@ const StockTable = () => {
             placeholder="搜索股票代码或名称..."
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-            刷新数据
-          </button>
         </div>
       </div>
       <table className="min-w-full divide-y divide-gray-200">

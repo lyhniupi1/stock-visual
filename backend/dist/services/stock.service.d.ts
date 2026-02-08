@@ -11,4 +11,5 @@ export declare class StockService {
         codeName: string;
     }[]>;
     getLatestStockData(code: string): Promise<StockDayPepbData | null>;
+    findByDate(date: string): Promise<StockDayPepbData[]>;
 }

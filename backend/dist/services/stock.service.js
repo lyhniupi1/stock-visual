@@ -62,6 +62,12 @@ let StockService = class StockService {
             order: { date: 'DESC' },
         });
     }
+    async findByDate(date) {
+        return this.stockRepository.find({
+            where: { date },
+            order: { code: 'ASC' },
+        });
+    }
 };
 exports.StockService = StockService;
 exports.StockService = StockService = __decorate([

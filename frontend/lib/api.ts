@@ -65,10 +65,34 @@ export async function fetchStockCodes(): Promise<{ code: string; codeName: strin
 }
 
 /**
+ * 按日期获取股票数据
+ */
+export async function fetchStocksByDate(date: string): Promise<StockData[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/stocks/date/${date}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch stocks by date:', error);
+    return [];
+  }
+}
+
+/**
  * 获取最新股票数据（简化版，用于表格显示）
  */
-export async function fetchSimplifiedStocks(): Promise<SimplifiedStock[]> {
-  const stocks = await fetchAllStocks();
+export async function fetchSimplifiedStocks(date?: string): Promise<SimplifiedStock[]> {
+  let stocks: StockData[];
+  
+  if (date) {
+    // 如果提供了日期，则按日期获取数据
+    stocks = await fetchStocksByDate(date);
+  } else {
+    // 否则获取所有数据（默认限制100条）
+    stocks = await fetchAllStocks();
+  }
   
   // 按日期分组，获取每个股票的最新数据
   const latestByCode: Record<string, StockData> = {};
