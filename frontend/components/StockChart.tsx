@@ -11,9 +11,21 @@ interface StockChartProps {
 
 const StockChart = ({ stockCode, stockName = '', limit = 365 }: StockChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [crosshairData, setCrosshairData] = useState<{
+    time: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    change: number;
+    changePercent: number;
+  } | null>(null);
+  const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | '1Y' | 'ALL'>('1Y');
 
   useEffect(() => {
     const loadStockData = async () => {
@@ -35,186 +47,201 @@ const StockChart = ({ stockCode, stockName = '', limit = 365 }: StockChartProps)
     loadStockData();
   }, [stockCode, limit]);
 
+  // 处理时间范围变化
+  useEffect(() => {
+    const loadDataForRange = async () => {
+      let newLimit = 365;
+      switch (timeRange) {
+        case '1M': newLimit = 30; break;
+        case '3M': newLimit = 90; break;
+        case '6M': newLimit = 180; break;
+        case '1Y': newLimit = 365; break;
+        case 'ALL': newLimit = 2000; break;
+      }
+      
+      try {
+        const data = await fetchStockHistory(stockCode, newLimit);
+        setStockData(data);
+      } catch (err) {
+        console.error('Failed to load stock data for range:', err);
+      }
+    };
+
+    loadDataForRange();
+  }, [timeRange, stockCode]);
+
+  // 初始化图表
   useEffect(() => {
     if (!chartContainerRef.current || stockData.length === 0) return;
 
-    const createChart = () => {
+    const initChart = async () => {
+      // 动态导入lightweight-charts
+      const lwc = await import('lightweight-charts');
+      const { createChart } = lwc;
+      
+      // 清除现有图表
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+      }
+
       const container = chartContainerRef.current;
       if (!container) return;
 
-      // 清除现有内容
-      container.innerHTML = '';
-
-      // 创建Canvas
-      const canvas = document.createElement('canvas');
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
-      container.appendChild(canvas);
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // 绘制背景
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      if (stockData.length === 0) {
-        ctx.fillStyle = '#666';
-        ctx.font = '16px Arial';
-        ctx.fillText('无数据可用', canvas.width / 2 - 40, canvas.height / 2);
-        return;
-      }
-
-      // 准备K线数据
-      const klineData = stockData.map(item => ({
-        date: item.date,
-        open: item.open || 0,
-        close: item.close || 0,
-        high: item.high || 0,
-        low: item.low || 0,
-        volume: item.volume || 0,
-      }));
-
-      // 计算价格范围
-      const prices = klineData.flatMap(d => [d.open, d.close, d.high, d.low]).filter(p => p > 0);
-      const maxPrice = Math.max(...prices);
-      const minPrice = Math.min(...prices);
-      const priceRange = maxPrice - minPrice;
-
-      // 图表区域边距
-      const margin = { top: 60, right: 40, bottom: 60, left: 60 };
-      const chartWidth = canvas.width - margin.left - margin.right;
-      const chartHeight = canvas.height - margin.top - margin.bottom;
-
-      // 绘制网格
-      ctx.strokeStyle = '#e5e7eb';
-      ctx.lineWidth = 1;
-
-      // 垂直网格线
-      const verticalLines = 10;
-      for (let i = 0; i <= verticalLines; i++) {
-        const x = margin.left + (chartWidth / verticalLines) * i;
-        ctx.beginPath();
-        ctx.moveTo(x, margin.top);
-        ctx.lineTo(x, margin.top + chartHeight);
-        ctx.stroke();
-      }
-
-      // 水平网格线
-      const horizontalLines = 8;
-      for (let i = 0; i <= horizontalLines; i++) {
-        const y = margin.top + (chartHeight / horizontalLines) * i;
-        ctx.beginPath();
-        ctx.moveTo(margin.left, y);
-        ctx.lineTo(margin.left + chartWidth, y);
-        ctx.stroke();
-      }
-
-      // 绘制Y轴价格标签
-      ctx.fillStyle = '#666';
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'right';
-      for (let i = 0; i <= horizontalLines; i++) {
-        const price = maxPrice - (priceRange / horizontalLines) * i;
-        const y = margin.top + (chartHeight / horizontalLines) * i;
-        ctx.fillText(price.toFixed(2), margin.left - 10, y + 4);
-      }
-
-      // 绘制K线
-      const barWidth = Math.min(20, chartWidth / klineData.length - 2);
-      const spacing = 2;
-
-      klineData.forEach((bar, index) => {
-        const x = margin.left + index * (barWidth + spacing) + barWidth / 2;
-        
-        // 计算Y坐标
-        const scaleY = (price: number) => 
-          margin.top + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
-
-        const openY = scaleY(bar.open);
-        const closeY = scaleY(bar.close);
-        const highY = scaleY(bar.high);
-        const lowY = scaleY(bar.low);
-
-        const isUp = bar.close >= bar.open;
-
-        // 绘制上下影线
-        ctx.strokeStyle = isUp ? '#10b981' : '#ef4444';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, highY);
-        ctx.lineTo(x, lowY);
-        ctx.stroke();
-
-        // 绘制实体
-        ctx.fillStyle = isUp ? '#10b981' : '#ef4444';
-        const entityTop = Math.min(openY, closeY);
-        const entityHeight = Math.abs(closeY - openY);
-        ctx.fillRect(x - barWidth / 2, entityTop, barWidth, Math.max(entityHeight, 1));
+      const chart = createChart(container, {
+        width: container.clientWidth,
+        height: 500,
+        layout: {
+          background: { color: '#ffffff' },
+          textColor: '#374151',
+        },
+        grid: {
+          vertLines: { color: '#e5e7eb' },
+          horzLines: { color: '#e5e7eb' },
+        },
+        crosshair: {
+          mode: lwc.CrosshairMode.Normal,
+        },
+        rightPriceScale: {
+          borderColor: '#d1d5db',
+        },
+        timeScale: {
+          borderColor: '#d1d5db',
+          timeVisible: true,
+          secondsVisible: false,
+        },
       });
 
-      // 绘制标题
-      ctx.fillStyle = '#374151';
-      ctx.font = 'bold 18px Arial';
-      ctx.textAlign = 'left';
-      const displayName = stockName || stockCode;
-      ctx.fillText(`${displayName} K线日线图`, margin.left, 30);
+      chartRef.current = chart;
 
-      // 绘制图例
-      ctx.fillStyle = '#10b981';
-      ctx.fillRect(canvas.width - 150, 20, 15, 15);
-      ctx.fillStyle = '#374151';
-      ctx.font = '12px Arial';
-      ctx.fillText('上涨', canvas.width - 130, 32);
+      // 准备K线数据
+      const candlestickData = stockData.map(item => ({
+        time: (new Date(item.date).getTime() / 1000) as any,
+        open: item.open || 0,
+        high: item.high || 0,
+        low: item.low || 0,
+        close: item.close || 0,
+      }));
 
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(canvas.width - 150, 45, 15, 15);
-      ctx.fillStyle = '#374151';
-      ctx.fillText('下跌', canvas.width - 130, 57);
+      // 准备成交量数据
+      const volumeData = stockData.map(item => ({
+        time: (new Date(item.date).getTime() / 1000) as any,
+        value: item.volume || 0,
+        color: (item.close || 0) >= (item.open || 0) ? '#10b981' : '#ef4444',
+      }));
 
-      // 绘制X轴日期标签
-      ctx.fillStyle = '#666';
-      ctx.font = '10px Arial';
-      ctx.textAlign = 'center';
-      
-      // 显示部分日期标签（避免重叠）
-      const labelInterval = Math.max(1, Math.floor(klineData.length / 10));
-      for (let i = 0; i < klineData.length; i += labelInterval) {
-        const bar = klineData[i];
-        const x = margin.left + i * (barWidth + spacing) + barWidth / 2;
-        const dateStr = formatDate(bar.date);
-        ctx.fillText(dateStr, x, margin.top + chartHeight + 20);
-      }
+      // 添加K线系列 - 使用正确的API
+      const candlestickSeries = chart.addSeries(lwc.CandlestickSeries, {
+        upColor: '#10b981',
+        downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#10b981',
+        wickDownColor: '#ef4444',
+      });
 
-      // 绘制最后价格
-      if (klineData.length > 0) {
-        const lastBar = klineData[klineData.length - 1];
-        ctx.fillStyle = '#374151';
-        ctx.font = 'bold 14px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(`最新价: ${lastBar.close.toFixed(2)}`, margin.left, margin.top + chartHeight + 40);
-        ctx.fillText(`日期: ${formatDate(lastBar.date)}`, margin.left, margin.top + chartHeight + 60);
+      // 添加成交量系列 - 使用正确的API
+      const volumeSeries = chart.addSeries(lwc.HistogramSeries, {
+        color: '#9ca3af',
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: 'volume',
+      });
+
+      // 设置数据
+      candlestickSeries.setData(candlestickData);
+      volumeSeries.setData(volumeData);
+
+      // 调整成交量图的位置
+      chart.priceScale('volume').applyOptions({
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0,
+        },
+      });
+
+      // 订阅十字线移动事件
+      chart.subscribeCrosshairMove((param: any) => {
+        if (param.time) {
+          const timestamp = param.time;
+          const dataPoint = findDataPointByTime(stockData, timestamp);
+          
+          if (dataPoint) {
+            const change = dataPoint.close - dataPoint.open;
+            const changePercent = (change / dataPoint.open) * 100;
+            
+            setCrosshairData({
+              time: formatDateForDisplay(dataPoint.date),
+              open: dataPoint.open,
+              high: dataPoint.high,
+              low: dataPoint.low,
+              close: dataPoint.close,
+              volume: dataPoint.volume,
+              change,
+              changePercent,
+            });
+          }
+        } else {
+          // 显示最新数据
+          updateCrosshairWithLatestData();
+        }
+      });
+
+      // 设置初始十字线数据
+      updateCrosshairWithLatestData();
+
+      // 处理窗口大小变化
+      const handleResize = () => {
+        if (chart && container) {
+          chart.applyOptions({
+            width: container.clientWidth,
+          });
+        }
+      };
+
+      window.addEventListener('resize', handleResize);
+    };
+
+    const updateCrosshairWithLatestData = () => {
+      const latestData = stockData[stockData.length - 1];
+      if (latestData) {
+        const change = latestData.close - latestData.open;
+        const changePercent = (change / latestData.open) * 100;
+        
+        setCrosshairData({
+          time: formatDateForDisplay(latestData.date),
+          open: latestData.open,
+          high: latestData.high,
+          low: latestData.low,
+          close: latestData.close,
+          volume: latestData.volume,
+          change,
+          changePercent,
+        });
       }
     };
 
-    createChart();
+    initChart();
 
-    // 处理窗口大小变化
-    const handleResize = () => {
-      createChart();
-    };
-
-    window.addEventListener('resize', handleResize);
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', () => {});
+      if (chartRef.current) {
+        chartRef.current.remove();
+      }
     };
-  }, [stockData, stockCode, stockName]);
+  }, [stockData]);
 
-  // 格式化日期
-  const formatDate = (dateStr: string) => {
+  // 根据时间查找数据点
+  const findDataPointByTime = (data: StockData[], timestamp: number): StockData | null => {
+    const targetDate = new Date(timestamp * 1000).toISOString().split('T')[0];
+    return data.find(item => item.date === targetDate) || null;
+  };
+
+  // 格式化日期显示
+  const formatDateForDisplay = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
-      return `${date.getMonth() + 1}/${date.getDate()}`;
+      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     } catch {
       return dateStr;
     }
@@ -263,6 +290,11 @@ const StockChart = ({ stockCode, stockName = '', limit = 365 }: StockChartProps)
     return mockData;
   };
 
+  // 处理时间范围按钮点击
+  const handleTimeRangeChange = (range: '1M' | '3M' | '6M' | '1Y' | 'ALL') => {
+    setTimeRange(range);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -288,11 +320,112 @@ const StockChart = ({ stockCode, stockName = '', limit = 365 }: StockChartProps)
   }
 
   return (
-    <div className="relative w-full h-full">
-      <div ref={chartContainerRef} className="w-full h-96" />
-      <div className="mt-4 text-sm text-gray-500">
-        <p>数据来源：本地数据库，股票代码：{stockCode}，共 {stockData.length} 个交易日数据</p>
-        <p className="mt-1">绿色表示上涨（收盘价≥开盘价），红色表示下跌（收盘价＜开盘价）</p>
+    <div className="relative w-full">
+      {/* 图表标题和时间范围选择器 */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {stockName || stockCode} K线图
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            数据来源：本地数据库，共 {stockData.length} 个交易日数据
+          </p>
+        </div>
+        
+        {/* 时间范围选择器 */}
+        <div className="flex space-x-2 mt-2 md:mt-0">
+          {(['1M', '3M', '6M', '1Y', 'ALL'] as const).map((range) => (
+            <button
+              key={range}
+              onClick={() => handleTimeRangeChange(range)}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                timeRange === range
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {range === '1M' ? '1个月' : 
+               range === '3M' ? '3个月' : 
+               range === '6M' ? '6个月' : 
+               range === '1Y' ? '1年' : '全部'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 十字线数据展示 */}
+      {crosshairData && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-gray-500">日期</p>
+              <p className="font-semibold">{crosshairData.time}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">开盘</p>
+              <p className="font-semibold">{crosshairData.open.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">最高</p>
+              <p className="font-semibold">{crosshairData.high.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">最低</p>
+              <p className="font-semibold">{crosshairData.low.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">收盘</p>
+              <p className="font-semibold">{crosshairData.close.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">涨跌</p>
+              <p className={`font-semibold ${crosshairData.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {crosshairData.change >= 0 ? '+' : ''}{crosshairData.change.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">涨跌幅</p>
+              <p className={`font-semibold ${crosshairData.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {crosshairData.changePercent >= 0 ? '+' : ''}{crosshairData.changePercent.toFixed(2)}%
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">成交量</p>
+              <p className="font-semibold">
+                {(crosshairData.volume / 10000).toFixed(1)}万手
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            提示：在图表上移动鼠标查看详细数据，拖动图表可调整时间范围
+          </p>
+        </div>
+      )}
+
+      {/* 图表容器 */}
+      <div ref={chartContainerRef} className="w-full border border-gray-200 rounded-lg overflow-hidden" />
+      
+      {/* 图例和说明 */}
+      <div className="mt-4 flex flex-wrap items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center">
+            <div className="w-4 h-4 bg-green-500 mr-2"></div>
+            <span className="text-sm text-gray-600">上涨</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 bg-red-500 mr-2"></div>
+            <span className="text-sm text-gray-600">下跌</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 bg-gray-400 mr-2"></div>
+            <span className="text-sm text-gray-600">成交量</span>
+          </div>
+        </div>
+        
+        <div className="text-sm text-gray-500 mt-2 md:mt-0">
+          <p>绿色表示上涨（收盘价≥开盘价），红色表示下跌（收盘价＜开盘价）</p>
+          <p className="mt-1">支持鼠标悬停查看详细数据，拖动图表调整时间范围</p>
+        </div>
       </div>
     </div>
   );
