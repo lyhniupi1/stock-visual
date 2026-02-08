@@ -9,7 +9,7 @@ interface StockChartProps {
   limit?: number;
 }
 
-const StockChart = ({ stockCode, stockName = '', limit = 365 }: StockChartProps) => {
+const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const [stockData, setStockData] = useState<StockData[]>([]);
@@ -55,7 +55,7 @@ const StockChart = ({ stockCode, stockName = '', limit = 365 }: StockChartProps)
         case '1M': newLimit = 30; break;
         case '3M': newLimit = 90; break;
         case '6M': newLimit = 180; break;
-        case '1Y': newLimit = 365; break;
+        case '1Y': newLimit = 0; break;
         case 'ALL': newLimit = 2000; break;
       }
       

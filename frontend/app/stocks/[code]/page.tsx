@@ -14,7 +14,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   
   // 并行获取股票历史数据和股票代码列表（用于导航）
   const [historyData, stockCodes] = await Promise.all([
-    fetchStockHistory(code, 180), // 获取最近180天的数据
+    fetchStockHistory(code, 0), // 获取全部数据（0表示不限制）
     fetchStockCodes(),
   ]);
 
@@ -126,7 +126,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
       {/* K线图 */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">K线日线图</h2>
-        <StockChart stockCode={code} stockName={displayName} limit={180} />
+        <StockChart stockCode={code} stockName={displayName} limit={0} />
       </div>
 
       {/* 数据表格 */}

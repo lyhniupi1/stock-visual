@@ -105,11 +105,14 @@ let StockService = class StockService {
         };
     }
     async getStockHistory(code, limit = 365) {
-        return this.stockRepository.find({
+        const queryOptions = {
             where: { code },
             order: { date: 'ASC' },
-            take: limit,
-        });
+        };
+        if (limit > 0) {
+            queryOptions.take = limit;
+        }
+        return this.stockRepository.find(queryOptions);
     }
 };
 exports.StockService = StockService;
