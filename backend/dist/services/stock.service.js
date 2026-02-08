@@ -62,11 +62,21 @@ let StockService = class StockService {
             order: { date: 'DESC' },
         });
     }
-    async findByDate(date) {
-        return this.stockRepository.find({
+    async findByDate(date, page = 1, pageSize = 20) {
+        const skip = (page - 1) * pageSize;
+        const [data, total] = await this.stockRepository.findAndCount({
             where: { date },
             order: { code: 'ASC' },
+            skip,
+            take: pageSize,
         });
+        return {
+            data,
+            total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize),
+        };
     }
 };
 exports.StockService = StockService;

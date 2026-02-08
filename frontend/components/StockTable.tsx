@@ -3,8 +3,21 @@
 import { useEffect, useState } from 'react';
 import { fetchSimplifiedStocks, SimplifiedStock } from '@/lib/api';
 
+interface PaginationInfo {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 const StockTable = () => {
   const [stocks, setStocks] = useState<SimplifiedStock[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    pageSize: 20,
+    totalPages: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -18,11 +31,17 @@ const StockTable = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const loadStocks = async (date?: string) => {
+  const loadStocks = async (date?: string, page: number = 1, pageSize: number = 20) => {
     try {
       setLoading(true);
-      const data = await fetchSimplifiedStocks(date);
-      setStocks(data);
+      const result = await fetchSimplifiedStocks(date, page, pageSize);
+      setStocks(result.data);
+      setPagination({
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalPages: result.totalPages,
+      });
       setError(null);
     } catch (err) {
       console.error('Failed to load stocks:', err);
@@ -36,6 +55,12 @@ const StockTable = () => {
         { code: '300750', name: '宁德时代', price: 185.30, change: '-0.8%', pe: 18.9, pb: 3.4, volume: '3.2亿' },
         { code: '002415', name: '海康威视', price: 32.45, change: '+0.9%', pe: 15.2, pb: 2.1, volume: '1.8亿' },
       ]);
+      setPagination({
+        total: 6,
+        page: 1,
+        pageSize: 20,
+        totalPages: 1,
+      });
     } finally {
       setLoading(false);
     }
@@ -45,17 +70,28 @@ const StockTable = () => {
     // 初始加载时使用今天的日期
     const today = getTodayDate();
     setSelectedDate(today);
-    loadStocks(today);
+    loadStocks(today, 1, 20);
   }, []);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
     setSelectedDate(newDate);
-    loadStocks(newDate);
+    loadStocks(newDate, 1, pagination.pageSize);
   };
 
   const handleRefresh = () => {
-    loadStocks(selectedDate);
+    loadStocks(selectedDate, pagination.page, pagination.pageSize);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadStocks(selectedDate, newPage, pagination.pageSize);
+    }
+  };
+
+  const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPageSize = parseInt(e.target.value, 10);
+    loadStocks(selectedDate, 1, newPageSize);
   };
 
   if (loading) {
@@ -116,17 +152,35 @@ const StockTable = () => {
         </div>
       </div>
 
-      <div className="mb-4 flex justify-between items-center">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
         <div>
-          <h3 className="text-lg font-bold text-gray-800">共 {stocks.length} 只股票</h3>
-          <p className="text-gray-600 text-sm">日期：{selectedDate}，点击股票代码查看详情</p>
+          <h3 className="text-lg font-bold text-gray-800">
+            共 {pagination.total} 只股票（第 {pagination.page}/{pagination.totalPages} 页）
+          </h3>
+          <p className="text-gray-600 text-sm">日期：{selectedDate}，每页显示 {pagination.pageSize} 条</p>
         </div>
-        <div className="flex space-x-2">
-          <input
-            type="text"
-            placeholder="搜索股票代码或名称..."
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+          <div className="flex items-center space-x-2">
+            <label htmlFor="page-size" className="text-gray-700 text-sm">每页显示：</label>
+            <select
+              id="page-size"
+              value={pagination.pageSize}
+              onChange={handlePageSizeChange}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="text"
+              placeholder="搜索股票代码或名称..."
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
       </div>
       <table className="min-w-full divide-y divide-gray-200">
@@ -192,6 +246,73 @@ const StockTable = () => {
           ))}
         </tbody>
       </table>
+      
+      {/* 分页控件 */}
+      {pagination.totalPages > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+          <div className="text-sm text-gray-600">
+            显示第 {(pagination.page - 1) * pagination.pageSize + 1} 到{' '}
+            {Math.min(pagination.page * pagination.pageSize, pagination.total)} 条，共 {pagination.total} 条
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handlePageChange(1)}
+              disabled={pagination.page === 1}
+              className={`px-3 py-1 rounded-lg ${pagination.page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              首页
+            </button>
+            <button
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page === 1}
+              className={`px-3 py-1 rounded-lg ${pagination.page === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              上一页
+            </button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum;
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (pagination.page <= 3) {
+                  pageNum = i + 1;
+                } else if (pagination.page >= pagination.totalPages - 2) {
+                  pageNum = pagination.totalPages - 4 + i;
+                } else {
+                  pageNum = pagination.page - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    className={`w-8 h-8 rounded-lg ${pagination.page === pageNum ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <button
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page === pagination.totalPages}
+              className={`px-3 py-1 rounded-lg ${pagination.page === pagination.totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              下一页
+            </button>
+            <button
+              onClick={() => handlePageChange(pagination.totalPages)}
+              disabled={pagination.page === pagination.totalPages}
+              className={`px-3 py-1 rounded-lg ${pagination.page === pagination.totalPages ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+            >
+              末页
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="mt-4 text-sm text-gray-500">
         <p>数据来源：本地数据库，最后更新：{new Date().toLocaleDateString('zh-CN')}</p>
       </div>

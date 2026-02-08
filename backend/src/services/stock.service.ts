@@ -60,10 +60,28 @@ export class StockService {
     });
   }
 
-  async findByDate(date: string): Promise<StockDayPepbData[]> {
-    return this.stockRepository.find({
+  async findByDate(date: string, page: number = 1, pageSize: number = 20): Promise<{
+    data: StockDayPepbData[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * pageSize;
+    
+    const [data, total] = await this.stockRepository.findAndCount({
       where: { date },
       order: { code: 'ASC' },
+      skip,
+      take: pageSize,
     });
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 }

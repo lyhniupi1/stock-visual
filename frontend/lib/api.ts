@@ -65,52 +65,110 @@ export async function fetchStockCodes(): Promise<{ code: string; codeName: strin
 }
 
 /**
- * 按日期获取股票数据
+ * 按日期获取股票数据（带分页）
  */
-export async function fetchStocksByDate(date: string): Promise<StockData[]> {
+export async function fetchStocksByDate(
+  date: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{
+  data: StockData[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/stocks/date/${date}`);
+    const response = await fetch(
+      `${API_BASE_URL}/api/stocks/date/${date}?page=${page}&pageSize=${pageSize}`
+    );
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
     console.error('Failed to fetch stocks by date:', error);
-    return [];
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: pageSize,
+      totalPages: 0,
+    };
   }
 }
 
 /**
  * 获取最新股票数据（简化版，用于表格显示）
  */
-export async function fetchSimplifiedStocks(date?: string): Promise<SimplifiedStock[]> {
-  let stocks: StockData[];
-  
+export async function fetchSimplifiedStocks(
+  date?: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{
+  data: SimplifiedStock[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> {
   if (date) {
-    // 如果提供了日期，则按日期获取数据
-    stocks = await fetchStocksByDate(date);
+    // 如果提供了日期，则按日期获取数据（带分页）
+    const result = await fetchStocksByDate(date, page, pageSize);
+    
+    // 转换为简化格式
+    const simplifiedData = result.data.map(stock => ({
+      code: stock.code,
+      name: stock.codeName || stock.code,
+      price: stock.close || 0,
+      change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
+      pe: stock.peTTM || 0,
+      pb: stock.pbMRQ || 0,
+      volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0'
+    }));
+
+    return {
+      data: simplifiedData,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      totalPages: result.totalPages,
+    };
   } else {
     // 否则获取所有数据（默认限制100条）
-    stocks = await fetchAllStocks();
-  }
-  
-  // 按日期分组，获取每个股票的最新数据
-  const latestByCode: Record<string, StockData> = {};
-  stocks.forEach(stock => {
-    const existing = latestByCode[stock.code];
-    if (!existing || new Date(stock.date) > new Date(existing.date)) {
-      latestByCode[stock.code] = stock;
-    }
-  });
+    const stocks = await fetchAllStocks();
+    
+    // 按日期分组，获取每个股票的最新数据
+    const latestByCode: Record<string, StockData> = {};
+    stocks.forEach(stock => {
+      const existing = latestByCode[stock.code];
+      if (!existing || new Date(stock.date) > new Date(existing.date)) {
+        latestByCode[stock.code] = stock;
+      }
+    });
 
-  // 转换为简化格式
-  return Object.values(latestByCode).map(stock => ({
-    code: stock.code,
-    name: stock.codeName || stock.code,
-    price: stock.close || 0,
-    change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
-    pe: stock.peTTM || 0,
-    pb: stock.pbMRQ || 0,
-    volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0'
-  }));
+    // 转换为简化格式
+    const simplifiedData = Object.values(latestByCode).map(stock => ({
+      code: stock.code,
+      name: stock.codeName || stock.code,
+      price: stock.close || 0,
+      change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
+      pe: stock.peTTM || 0,
+      pb: stock.pbMRQ || 0,
+      volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0'
+    }));
+
+    // 对于非日期查询，我们仍然支持分页（前端分页）
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedData = simplifiedData.slice(startIndex, endIndex);
+
+    return {
+      data: paginatedData,
+      total: simplifiedData.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(simplifiedData.length / pageSize),
+    };
+  }
 }

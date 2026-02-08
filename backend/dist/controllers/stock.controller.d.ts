@@ -11,5 +11,11 @@ export declare class StockController {
     getStockByCode(code: string): Promise<StockDayPepbData[]>;
     getLatestStockData(code: string): Promise<StockDayPepbData | null>;
     getStockByDateRange(code: string, startDate: string, endDate: string): Promise<StockDayPepbData[]>;
-    getStocksByDate(date: string): Promise<StockDayPepbData[]>;
+    getStocksByDate(date: string, page?: string, pageSize?: string): Promise<{
+        data: StockDayPepbData[];
+        total: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+    }>;
 }

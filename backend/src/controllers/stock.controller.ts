@@ -42,7 +42,19 @@ export class StockController {
   @Get('date/:date')
   async getStocksByDate(
     @Param('date') date: string,
-  ): Promise<StockDayPepbData[]> {
-    return this.stockService.findByDate(date);
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ): Promise<{
+    data: StockDayPepbData[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    return this.stockService.findByDate(
+      date,
+      parseInt(page, 10),
+      parseInt(pageSize, 10),
+    );
   }
 }
