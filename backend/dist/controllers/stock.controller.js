@@ -38,6 +38,9 @@ let StockController = class StockController {
     async getStocksByDate(date, page = '1', pageSize = '20') {
         return this.stockService.findByDate(date, parseInt(page, 10), parseInt(pageSize, 10));
     }
+    async getStockHistory(code, limit = '365') {
+        return this.stockService.getStockHistory(code, parseInt(limit, 10));
+    }
 };
 exports.StockController = StockController;
 __decorate([
@@ -84,6 +87,14 @@ __decorate([
     __metadata("design:paramtypes", [String, String, String]),
     __metadata("design:returntype", Promise)
 ], StockController.prototype, "getStocksByDate", null);
+__decorate([
+    (0, common_1.Get)(':code/history'),
+    __param(0, (0, common_1.Param)('code')),
+    __param(1, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], StockController.prototype, "getStockHistory", null);
 exports.StockController = StockController = __decorate([
     (0, common_1.Controller)('api/stocks'),
     __metadata("design:paramtypes", [stock_service_1.StockService])

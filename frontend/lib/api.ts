@@ -99,6 +99,24 @@ export async function fetchStocksByDate(
 }
 
 /**
+ * 获取股票历史数据（用于K线图）
+ */
+export async function fetchStockHistory(code: string, limit: number = 365): Promise<StockData[]> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/stocks/${code}/history?limit=${limit}`
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch stock history:', error);
+    return [];
+  }
+}
+
+/**
  * 获取最新股票数据（简化版，用于表格显示）
  */
 export async function fetchSimplifiedStocks(

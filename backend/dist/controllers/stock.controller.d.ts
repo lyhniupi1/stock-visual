@@ -18,4 +18,5 @@ export declare class StockController {
         pageSize: number;
         totalPages: number;
     }>;
+    getStockHistory(code: string, limit?: string): Promise<StockDayPepbData[]>;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { fetchSimplifiedStocks, SimplifiedStock } from '@/lib/api';
 
 interface PaginationInfo {
@@ -11,6 +12,7 @@ interface PaginationInfo {
 }
 
 const StockTable = () => {
+  const router = useRouter();
   const [stocks, setStocks] = useState<SimplifiedStock[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
@@ -93,6 +95,10 @@ const StockTable = () => {
   const handlePageSizeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newPageSize = parseInt(e.target.value, 10);
     loadStocks(selectedDate, 1, newPageSize);
+  };
+
+  const handleViewStock = (code: string, name: string) => {
+    router.push(`/stocks/${code}?name=${encodeURIComponent(name)}`);
   };
 
   if (loading) {
@@ -235,7 +241,10 @@ const StockTable = () => {
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex space-x-2">
-                  <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200">
+                  <button
+                    onClick={() => handleViewStock(stock.code, stock.name)}
+                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200"
+                  >
                     查看
                   </button>
                   <button className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm hover:bg-green-200">

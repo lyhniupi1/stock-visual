@@ -57,4 +57,12 @@ export class StockController {
       parseInt(pageSize, 10),
     );
   }
+
+  @Get(':code/history')
+  async getStockHistory(
+    @Param('code') code: string,
+    @Query('limit') limit: string = '365',
+  ): Promise<StockDayPepbData[]> {
+    return this.stockService.getStockHistory(code, parseInt(limit, 10));
+  }
 }

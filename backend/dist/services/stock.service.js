@@ -104,6 +104,13 @@ let StockService = class StockService {
             totalPages: Math.ceil(total / pageSize),
         };
     }
+    async getStockHistory(code, limit = 365) {
+        return this.stockRepository.find({
+            where: { code },
+            order: { date: 'ASC' },
+            take: limit,
+        });
+    }
 };
 exports.StockService = StockService;
 exports.StockService = StockService = __decorate([

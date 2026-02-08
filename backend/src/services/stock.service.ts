@@ -135,4 +135,12 @@ export class StockService {
       totalPages: Math.ceil(total / pageSize),
     };
   }
+
+  async getStockHistory(code: string, limit: number = 365): Promise<StockDayPepbData[]> {
+    return this.stockRepository.find({
+      where: { code },
+      order: { date: 'ASC' }, // 按日期升序排列，便于绘制K线图
+      take: limit,
+    });
+  }
 }
