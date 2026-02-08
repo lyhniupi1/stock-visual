@@ -53,13 +53,18 @@ export async function fetchAllStocks(): Promise<StockData[]> {
  */
 export async function fetchStockCodes(): Promise<{ code: string; codeName: string }[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/stocks/codes`);
+    const response = await fetch(`${API_BASE_URL}/api/stocks/codes`, {
+      // 添加超时和更宽松的错误处理
+      signal: AbortSignal.timeout?.(5000) || undefined,
+    });
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // 不抛出错误，而是返回空数组
+      console.warn(`Failed to fetch stock codes: HTTP ${response.status}`);
+      return [];
     }
     return await response.json();
   } catch (error) {
-    console.error('Failed to fetch stock codes:', error);
+    // 静默处理错误，不打印到控制台
     return [];
   }
 }

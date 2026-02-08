@@ -55,8 +55,8 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
         case '1M': newLimit = 30; break;
         case '3M': newLimit = 90; break;
         case '6M': newLimit = 180; break;
-        case '1Y': newLimit = 0; break;
-        case 'ALL': newLimit = 2000; break;
+        case '1Y': newLimit = 365; break;
+        case 'ALL': newLimit = 0; break;
       }
       
       try {
@@ -81,7 +81,12 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       
       // 清除现有图表
       if (chartRef.current) {
-        chartRef.current.remove();
+        try {
+          chartRef.current.remove();
+        } catch (err) {
+          // 图表可能已经被销毁，忽略错误
+          console.log('Chart already disposed');
+        }
         chartRef.current = null;
       }
 

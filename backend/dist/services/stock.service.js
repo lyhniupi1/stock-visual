@@ -47,13 +47,13 @@ let StockService = class StockService {
     async getStockCodes() {
         const results = await this.stockRepository
             .createQueryBuilder('stock')
-            .select('DISTINCT stock.code', 'code')
-            .addSelect('stock.codeName', 'codeName')
+            .select(['stock.code', 'stock.codeName'])
             .where('stock.codeName IS NOT NULL')
+            .distinct(true)
             .getRawMany();
         return results.map(row => ({
-            code: row.code,
-            codeName: row.codeName,
+            code: row.stock_code,
+            codeName: row.stock_codeName,
         }));
     }
     async getLatestStockData(code) {
@@ -105,14 +105,18 @@ let StockService = class StockService {
         };
     }
     async getStockHistory(code, limit = 365) {
-        const queryOptions = {
-            where: { code },
-            order: { date: 'ASC' },
-        };
-        if (limit > 0) {
-            queryOptions.take = limit;
+        if (limit === 0) {
+            return this.stockRepository.find({
+                where: { code },
+                order: { date: 'ASC' },
+            });
         }
-        return this.stockRepository.find(queryOptions);
+        const recentData = await this.stockRepository.find({
+            where: { code },
+            order: { date: 'DESC' },
+            take: limit,
+        });
+        return recentData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }
 };
 exports.StockService = StockService;

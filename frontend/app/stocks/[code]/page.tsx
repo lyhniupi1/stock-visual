@@ -13,10 +13,19 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   const stockName = typeof searchParamsObj.name === 'string' ? searchParamsObj.name : '';
   
   // 并行获取股票历史数据和股票代码列表（用于导航）
-  const [historyData, stockCodes] = await Promise.all([
-    fetchStockHistory(code, 0), // 获取全部数据（0表示不限制）
-    fetchStockCodes(),
-  ]);
+  let historyData: any[] = [];
+  let stockCodes: { code: string; codeName: string }[] = [];
+  try {
+    [historyData, stockCodes] = await Promise.all([
+      fetchStockHistory(code, 0), // 获取全部数据（0表示不限制）
+      fetchStockCodes(),
+    ]);
+  } catch (error) {
+    console.error('Failed to fetch data:', error);
+    // 如果获取股票代码失败，只获取历史数据
+    historyData = await fetchStockHistory(code, 0);
+    stockCodes = [];
+  }
 
   // 查找当前股票在列表中的位置
   const currentIndex = stockCodes.findIndex(stock => stock.code === code);

@@ -42,14 +42,14 @@ export class StockService {
   async getStockCodes(): Promise<{ code: string; codeName: string }[]> {
     const results = await this.stockRepository
       .createQueryBuilder('stock')
-      .select('DISTINCT stock.code', 'code')
-      .addSelect('stock.codeName', 'codeName')
+      .select(['stock.code', 'stock.codeName'])
       .where('stock.codeName IS NOT NULL')
+      .distinct(true)
       .getRawMany();
     
     return results.map(row => ({
-      code: row.code,
-      codeName: row.codeName,
+      code: row.stock_code,
+      codeName: row.stock_codeName,
     }));
   }
 
@@ -137,16 +137,25 @@ export class StockService {
   }
 
   async getStockHistory(code: string, limit: number = 365): Promise<StockDayPepbData[]> {
-    const queryOptions: any = {
-      where: { code },
-      order: { date: 'ASC' }, // 按日期升序排列，便于绘制K线图
-    };
-    
-    // 如果limit大于0，则限制返回数量；否则返回全部数据
-    if (limit > 0) {
-      queryOptions.take = limit;
+    // 如果limit为0，返回全部数据（按升序）
+    if (limit === 0) {
+      return this.stockRepository.find({
+        where: { code },
+        order: { date: 'ASC' },
+      });
     }
     
-    return this.stockRepository.find(queryOptions);
+    // 如果limit大于0，获取最近的数据
+    // 首先按降序获取最近的数据
+    const recentData = await this.stockRepository.find({
+      where: { code },
+      order: { date: 'DESC' },
+      take: limit,
+    });
+    
+    // 然后按升序排序返回（lightweight-charts要求）
+    return recentData.sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
   }
 }
