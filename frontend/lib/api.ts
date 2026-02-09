@@ -1,4 +1,9 @@
-const API_BASE_URL = 'http://localhost:8080';
+/**
+ * API基础URL配置
+ * 开发环境：通过Next.js代理配置，使用相对路径 /api
+ * 生产环境：使用相对路径 /api，由nginx代理到后端
+ */
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface StockData {
   code: string;
