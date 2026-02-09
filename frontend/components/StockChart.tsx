@@ -161,14 +161,14 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       chart.priceScale('right').applyOptions({
         scaleMargins: {
           top: 0.1,
-          bottom: 0.35,
+          bottom: 0.4,
         },
       });
 
       // 调整成交量图的位置，增大与K线图的间隔
       chart.priceScale('volume').applyOptions({
         scaleMargins: {
-          top: 0.7,
+          top: 0.65,
           bottom: 0.05,
         },
       });
