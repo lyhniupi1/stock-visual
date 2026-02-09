@@ -157,11 +157,19 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       candlestickSeries.setData(candlestickData);
       volumeSeries.setData(volumeData);
 
-      // 调整成交量图的位置
+      // 调整主价格图（K线图）的位置，为成交量留出更多空间
+      chart.priceScale('right').applyOptions({
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.35,
+        },
+      });
+
+      // 调整成交量图的位置，增大与K线图的间隔
       chart.priceScale('volume').applyOptions({
         scaleMargins: {
-          top: 0.8,
-          bottom: 0,
+          top: 0.7,
+          bottom: 0.05,
         },
       });
 
