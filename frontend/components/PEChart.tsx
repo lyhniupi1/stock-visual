@@ -20,7 +20,7 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
     time: string;
     peTTM: number;
   } | null>(null);
-  const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | '1Y' | 'ALL'>('1Y');
+  const [timeRange, setTimeRange] = useState<'1Y' | '3Y' | '5Y' | '10Y' | 'ALL'>('1Y');
   const [internalLimit, setInternalLimit] = useState<number>(limit);
   const [percentile, setPercentile] = useState<number | null>(null);
 
