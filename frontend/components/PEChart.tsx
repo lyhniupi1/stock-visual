@@ -21,6 +21,27 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
     peTTM: number;
   } | null>(null);
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | '1Y' | 'ALL'>('1Y');
+  const [percentile, setPercentile] = useState<number | null>(null);
+
+  // 计算百分位
+  const calculatePercentile = (values: number[], currentValue: number): number => {
+    if (values.length === 0) return 0;
+    
+    // 过滤掉无效值
+    const validValues = values.filter(v => !isNaN(v) && isFinite(v));
+    if (validValues.length === 0) return 0;
+    
+    // 排序
+    const sortedValues = [...validValues].sort((a, b) => a - b);
+    
+    // 计算小于等于当前值的数量
+    const countLessOrEqual = sortedValues.filter(v => v <= currentValue).length;
+    
+    // 计算百分位
+    const percentile = (countLessOrEqual / sortedValues.length) * 100;
+    
+    return Math.round(percentile * 10) / 10; // 保留一位小数
+  };
 
   useEffect(() => {
     const loadStockData = async () => {
@@ -28,12 +49,34 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
         setLoading(true);
         const data = await fetchStockHistory(stockCode, limit);
         setStockData(data);
+        
+        // 计算最新数据的百分位
+        if (data.length > 0) {
+          const latestData = data[data.length - 1];
+          const peValues = data.map(item => item.peTTM).filter(pe => pe && pe > 0);
+          if (peValues.length > 0 && latestData.peTTM) {
+            const percentileValue = calculatePercentile(peValues, latestData.peTTM);
+            setPercentile(percentileValue);
+          }
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Failed to load stock data:', err);
         setError('无法加载股票历史数据');
         // 使用模拟数据作为后备
-        setStockData(generateMockData());
+        const mockData = generateMockData();
+        setStockData(mockData);
+        
+        // 为模拟数据计算百分位
+        if (mockData.length > 0) {
+          const latestData = mockData[mockData.length - 1];
+          const peValues = mockData.map(item => item.peTTM).filter(pe => pe && pe > 0);
+          if (peValues.length > 0 && latestData.peTTM) {
+            const percentileValue = calculatePercentile(peValues, latestData.peTTM);
+            setPercentile(percentileValue);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -274,7 +317,7 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
         {/* 十字线数据展示 */}
         {crosshairData && (
           <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <div className="text-sm text-gray-500">日期</div>
                 <div className="text-lg font-semibold">{crosshairData.time}</div>
@@ -282,10 +325,23 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
               <div>
                 <div className="text-sm text-gray-500">PE(TTM)</div>
                 <div className={`text-lg font-semibold ${
-                  crosshairData.peTTM > 20 ? 'text-red-600' : 
+                  crosshairData.peTTM > 20 ? 'text-red-600' :
                   crosshairData.peTTM > 10 ? 'text-yellow-600' : 'text-green-600'
                 }`}>
                   {crosshairData.peTTM.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">历史分位</div>
+                <div className="text-lg font-semibold text-blue-700">
+                  {percentile !== null ? `${percentile}%` : '计算中...'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {percentile !== null && percentile >= 0 && percentile <= 100 ? (
+                    percentile < 30 ? '处于历史较低水平' :
+                    percentile < 70 ? '处于历史中等水平' :
+                    '处于历史较高水平'
+                  ) : ''}
                 </div>
               </div>
             </div>
