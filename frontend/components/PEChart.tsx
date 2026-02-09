@@ -21,7 +21,26 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
     peTTM: number;
   } | null>(null);
   const [timeRange, setTimeRange] = useState<'1M' | '3M' | '6M' | '1Y' | 'ALL'>('1Y');
+  const [internalLimit, setInternalLimit] = useState<number>(limit);
   const [percentile, setPercentile] = useState<number | null>(null);
+
+  // 根据时间范围计算 limit
+  const getLimitFromTimeRange = (range: '1Y' | '3Y' | '5Y' | '10Y' | 'ALL'): number => {
+    switch (range) {
+      case '1Y':
+        return 1*365;
+      case '3Y':
+        return 3*365;
+      case '5Y':
+        return 5*365;
+      case '10Y':
+        return 10*365;
+      case 'ALL':
+        return 0; // 0 表示获取所有数据
+      default:
+        return 0;
+    }
+  };
 
   // 计算百分位
   const calculatePercentile = (values: number[], currentValue: number): number => {
@@ -43,11 +62,16 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
     return Math.round(percentile * 10) / 10; // 保留一位小数
   };
 
+  // 当 prop limit 变化时，更新 internalLimit
+  useEffect(() => {
+    setInternalLimit(limit);
+  }, [limit]);
+
   useEffect(() => {
     const loadStockData = async () => {
       try {
         setLoading(true);
-        const data = await fetchStockHistory(stockCode, limit);
+        const data = await fetchStockHistory(stockCode, internalLimit);
         setStockData(data);
         
         // 计算最新数据的百分位
@@ -83,13 +107,14 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
     };
 
     loadStockData();
-  }, [stockCode, limit]);
+  }, [stockCode, internalLimit]);
 
   // 处理时间范围变化
-  const handleTimeRangeChange = (range: '1M' | '3M' | '6M' | '1Y' | 'ALL') => {
+  const handleTimeRangeChange = (range: '1Y' | '3Y' | '5Y' | '10Y' | 'ALL') => {
     setTimeRange(range);
-    // 这里可以根据时间范围过滤数据
-    // 目前先不实现过滤，因为API已经返回所有数据
+    const newLimit = getLimitFromTimeRange(range);
+    setInternalLimit(newLimit);
+    // limit 变化会触发 useEffect 重新获取数据
   };
 
   useEffect(() => {
@@ -98,10 +123,6 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
     const container = chartContainerRef.current;
     if (!container) return;
 
-    // 清理之前的图表
-    if (chartRef.current) {
-      chartRef.current.remove();
-    }
 
     const initChart = () => {
       // 创建图表实例
@@ -291,7 +312,7 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
         </div>
         
         <div className="flex space-x-2 mt-2 md:mt-0">
-          {(['1M', '3M', '6M', '1Y', 'ALL'] as const).map((range) => (
+          {(['1Y', '3Y', '5Y', '10Y', 'ALL'] as const).map((range) => (
             <button
               key={range}
               className={`px-3 py-1 text-sm rounded-md ${
@@ -301,10 +322,10 @@ const PEChart = ({ stockCode, stockName = '', limit = 0 }: PEChartProps) => {
               }`}
               onClick={() => handleTimeRangeChange(range)}
             >
-              {range === '1M' ? '1个月' : 
-               range === '3M' ? '3个月' : 
-               range === '6M' ? '6个月' : 
-               range === '1Y' ? '1年' : '全部'}
+              {range === '1Y' ? '1年' : 
+               range === '3Y' ? '3年' : 
+               range === '5Y' ? '5年' : 
+               range === '10Y' ? '10年' : '全部'}
             </button>
           ))}
         </div>
