@@ -1,5 +1,6 @@
 import PEChart from '@/components/PEChart';
 import PBChart from '@/components/PBChart';
+import StockBonus from '@/components/StockBonus';
 import { fetchStockCodes } from '@/lib/api';
 import Link from 'next/link';
 
@@ -98,6 +99,14 @@ export default async function PEPBChartPage({ params, searchParams }: PEPBChartP
             limit={0} // 0表示获取全部数据
           />
         </div>
+      </div>
+
+      {/* 分红数据表格 */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <StockBonus
+          code={code}
+          codeName={displayName}
+        />
       </div>
 
       {/* 说明卡片 */}
