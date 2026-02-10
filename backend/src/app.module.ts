@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { StockDayPepbData } from './entities/stock-day-pepb-data.entity';
+import { StockBonusData } from './entities/stock-bonus-data.entity';
 import { StockController } from './controllers/stock.controller';
 import { StockService } from './services/stock.service';
 
@@ -15,7 +16,7 @@ import { StockService } from './services/stock.service';
       synchronize: false, // 生产环境设为false，使用迁移
       logging: true,
     }),
-    TypeOrmModule.forFeature([StockDayPepbData]),
+    TypeOrmModule.forFeature([StockDayPepbData, StockBonusData]),
   ],
   controllers: [AppController, StockController],
   providers: [AppService, StockService],

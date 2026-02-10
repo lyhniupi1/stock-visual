@@ -242,3 +242,51 @@ export async function fetchSimplifiedStocks(
     };
   }
 }
+
+export interface StockBonusData {
+  code: string;
+  dateStr: string;
+  codeName: string | null;
+  bonusData: string | null;
+  amount: number | null;
+  stockDividend: number | null;
+}
+
+/**
+ * 获取股票分红数据
+ * @param code 股票代码
+ * @returns 股票分红数据列表
+ */
+export async function fetchStockBonusData(code: string): Promise<StockBonusData[]> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/bonus`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch stock bonus data:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取股票最新分红数据
+ * @param code 股票代码
+ * @returns 最新分红数据或null
+ */
+export async function fetchLatestStockBonusData(code: string): Promise<StockBonusData | null> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/bonus/latest`));
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch latest stock bonus data:', error);
+    return null;
+  }
+}

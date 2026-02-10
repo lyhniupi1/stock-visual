@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
+import { StockBonusData } from '../entities/stock-bonus-data.entity';
 
 @Injectable()
 export class StockService {
   constructor(
     @InjectRepository(StockDayPepbData)
     private stockRepository: Repository<StockDayPepbData>,
+    @InjectRepository(StockBonusData)
+    private stockBonusRepository: Repository<StockBonusData>,
   ) {}
 
   async findAll(): Promise<StockDayPepbData[]> {
@@ -157,5 +160,29 @@ export class StockService {
     return recentData.sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
+  }
+
+  /**
+   * 获取股票分红数据
+   * @param code 股票代码
+   * @returns 股票分红数据列表，按日期降序排列
+   */
+  async getStockBonusData(code: string): Promise<StockBonusData[]> {
+    return this.stockBonusRepository.find({
+      where: { code },
+      order: { dateStr: 'DESC' },
+    });
+  }
+
+  /**
+   * 获取股票最新分红数据
+   * @param code 股票代码
+   * @returns 最新分红数据或null
+   */
+  async getLatestStockBonusData(code: string): Promise<StockBonusData | null> {
+    return this.stockBonusRepository.findOne({
+      where: { code },
+      order: { dateStr: 'DESC' },
+    });
   }
 }

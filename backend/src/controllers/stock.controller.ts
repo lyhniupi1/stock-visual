@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Param } from '@nestjs/common';
 import { StockService } from '../services/stock.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
+import { StockBonusData } from '../entities/stock-bonus-data.entity';
 
 @Controller('api/stocks')
 export class StockController {
@@ -64,5 +65,19 @@ export class StockController {
     @Query('limit') limit: string = '365',
   ): Promise<StockDayPepbData[]> {
     return this.stockService.getStockHistory(code, parseInt(limit, 10));
+  }
+
+  @Get(':code/bonus')
+  async getStockBonusData(
+    @Param('code') code: string,
+  ): Promise<StockBonusData[]> {
+    return this.stockService.getStockBonusData(code);
+  }
+
+  @Get(':code/bonus/latest')
+  async getLatestStockBonusData(
+    @Param('code') code: string,
+  ): Promise<StockBonusData | null> {
+    return this.stockService.getLatestStockBonusData(code);
   }
 }
