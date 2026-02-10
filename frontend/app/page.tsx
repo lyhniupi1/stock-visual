@@ -51,7 +51,7 @@ export default function Home() {
       <div className="bg-white rounded-xl shadow-lg p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-6">K线图示例</h2>
         <div className="h-96">
-          <StockChart />
+          <StockChart stockCode="sh.000001" stockName="平安银行" />
         </div>
       </div>
 
