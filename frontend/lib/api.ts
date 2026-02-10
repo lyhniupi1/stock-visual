@@ -4,6 +4,8 @@
  * 生产环境：使用相对路径 /api，由nginx代理到后端
  */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const BACKEND_URL = process.env.NEXT_BACKEND_URL || '';
+
 
 export interface StockData {
   code: string;
@@ -38,11 +40,51 @@ export interface SimplifiedStock {
 }
 
 /**
+ * 获取完整的API URL
+ * - 在客户端组件中：使用相对路径 /api，由Next.js代理处理
+ * - 在服务端组件中：使用完整的后端URL（如 http://localhost:8080/api）
+ * - 如果设置了 NEXT_PUBLIC_API_URL 环境变量，则优先使用
+ *
+ * @param path API路径，如 '/stocks' 或 '/stocks/codes'
+ * @returns 完整的API URL
+ */
+export function getApiUrl(path: string): string {
+  // 移除路径开头的斜杠（如果有），确保拼接正确
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  
+  // 如果设置了环境变量，直接使用
+  if (API_BASE_URL) {
+    return `${API_BASE_URL}/api/${cleanPath}`;
+  }
+  
+  // 检测是否在浏览器环境中
+  const isClient = typeof window !== 'undefined';
+  
+  if (isClient) {
+    // 客户端组件：使用相对路径，由Next.js代理处理
+    return `/api/${cleanPath}`;
+  } else {
+    // 服务端组件：直接访问后端
+    // 开发环境默认使用 localhost:8080，生产环境由nginx代理
+    const backendBaseUrl = process.env.NODE_ENV === 'development'
+      ? `${BACKEND_URL}`
+      : `${BACKEND_URL}`; // 生产环境使用相对路径，由nginx代理
+    
+    if (backendBaseUrl) {
+      return `${backendBaseUrl}/api/${cleanPath}`;
+    } else {
+      // 生产环境或未配置时，也使用相对路径
+      return `/api/${cleanPath}`;
+    }
+  }
+}
+
+/**
  * 获取所有股票数据
  */
 export async function fetchAllStocks(): Promise<StockData[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/stocks`);
+    const response = await fetch(getApiUrl('/stocks'));
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -58,7 +100,7 @@ export async function fetchAllStocks(): Promise<StockData[]> {
  */
 export async function fetchStockCodes(): Promise<{ code: string; codeName: string }[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/stocks/codes`, {
+    const response = await fetch(getApiUrl('/stocks/codes'), {
       // 添加超时和更宽松的错误处理
       signal: AbortSignal.timeout?.(5000) || undefined,
     });
@@ -90,7 +132,7 @@ export async function fetchStocksByDate(
 }> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/stocks/date/${date}?page=${page}&pageSize=${pageSize}`
+      getApiUrl(`/stocks/date/${date}?page=${page}&pageSize=${pageSize}`)
     );
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -114,7 +156,7 @@ export async function fetchStocksByDate(
 export async function fetchStockHistory(code: string, limit: number = 365): Promise<StockData[]> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/stocks/${code}/history?limit=${limit}`
+      getApiUrl(`/stocks/${code}/history?limit=${limit}`)
     );
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
