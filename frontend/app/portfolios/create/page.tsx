@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createPortfolio, PortfolioStock } from '@/lib/api';
+import StockSearchSelect from '@/components/StockSearchSelect';
 
 export default function CreatePortfolioPage() {
   const router = useRouter();
@@ -29,6 +30,13 @@ export default function CreatePortfolioPage() {
   const updateStock = (index: number, field: keyof PortfolioStock, value: string | number) => {
     const newStocks = [...stocks];
     newStocks[index] = { ...newStocks[index], [field]: value };
+    setStocks(newStocks);
+  };
+
+  // 选择股票
+  const handleSelectStock = (index: number, code: string, name: string) => {
+    const newStocks = [...stocks];
+    newStocks[index] = { ...newStocks[index], code, name };
     setStocks(newStocks);
   };
 
@@ -125,49 +133,20 @@ export default function CreatePortfolioPage() {
           ) : (
             <div className="space-y-4">
               {stocks.map((stock, index) => (
-                <div key={index} className="grid grid-cols-5 gap-4 items-end bg-gray-50 p-4 rounded-lg">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">股票代码</label>
-                    <input
-                      type="text"
+                <div key={index} className="grid grid-cols-12 gap-4 items-end bg-gray-50 p-4 rounded-lg">
+                  {/* 股票选择 - 占4列 */}
+                  <div className="col-span-5">
+                    <label className="block text-xs text-gray-500 mb-1">股票</label>
+                    <StockSearchSelect
                       value={stock.code}
-                      onChange={(e) => updateStock(index, 'code', e.target.value)}
-                      placeholder="sh600000"
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                      onSelect={(selected) => handleSelectStock(index, selected.code, selected.codeName)}
+                      placeholder="搜索股票代码或名称..."
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">股票名称</label>
-                    <input
-                      type="text"
-                      value={stock.name}
-                      onChange={(e) => updateStock(index, 'name', e.target.value)}
-                      placeholder="浦发银行"
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">持仓数量</label>
-                    <input
-                      type="number"
-                      value={stock.quantity || ''}
-                      onChange={(e) => updateStock(index, 'quantity', parseInt(e.target.value) || 0)}
-                      placeholder="100"
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">成本价</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={stock.costPrice || ''}
-                      onChange={(e) => updateStock(index, 'costPrice', parseFloat(e.target.value) || 0)}
-                      placeholder="10.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                    />
-                  </div>
-                  <div>
+
+
+                  {/* 删除按钮 */}
+                  <div className="col-span-1">
                     <button
                       type="button"
                       onClick={() => removeStock(index)}
