@@ -16,6 +16,9 @@ const Navbar = () => {
               <Link href="/stocks" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md">
                 股票列表
               </Link>
+              <Link href="/portfolios" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md">
+                我的组合
+              </Link>
               <Link href="/charts" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md">
                 K线图
               </Link>

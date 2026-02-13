@@ -290,3 +290,127 @@ export async function fetchLatestStockBonusData(code: string): Promise<StockBonu
     return null;
   }
 }
+
+// ==================== Portfolio API ====================
+
+export interface PortfolioStock {
+  code: string;
+  name: string;
+  quantity: number;
+  costPrice: number;
+}
+
+export interface Portfolio {
+  id: number;
+  name: string;
+  stockCount: number;
+  stocks: PortfolioStock[];
+  createdAt: string;
+  initialValue: number;
+  currentValue: number;
+  profitPercent: number;
+}
+
+export interface CreatePortfolioDto {
+  name: string;
+  stocks: PortfolioStock[];
+  createdAt: string;
+}
+
+export interface UpdatePortfolioDto {
+  name?: string;
+  stocks?: PortfolioStock[];
+}
+
+/**
+ * 获取所有组合列表
+ */
+export async function getPortfolios(): Promise<Portfolio[]> {
+  try {
+    const response = await fetch(getApiUrl('/portfolios'));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch portfolios:', error);
+    throw error;
+  }
+}
+
+/**
+ * 根据ID获取组合详情
+ */
+export async function getPortfolioById(id: number): Promise<Portfolio> {
+  try {
+    const response = await fetch(getApiUrl(`/portfolios/${id}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch portfolio:', error);
+    throw error;
+  }
+}
+
+/**
+ * 创建新组合
+ */
+export async function createPortfolio(dto: CreatePortfolioDto): Promise<Portfolio> {
+  try {
+    const response = await fetch(getApiUrl('/portfolios'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dto),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to create portfolio:', error);
+    throw error;
+  }
+}
+
+/**
+ * 更新组合
+ */
+export async function updatePortfolio(id: number, dto: UpdatePortfolioDto): Promise<Portfolio> {
+  try {
+    const response = await fetch(getApiUrl(`/portfolios/${id}`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dto),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to update portfolio:', error);
+    throw error;
+  }
+}
+
+/**
+ * 删除组合
+ */
+export async function deletePortfolio(id: number): Promise<void> {
+  try {
+    const response = await fetch(getApiUrl(`/portfolios/${id}`), {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Failed to delete portfolio:', error);
+    throw error;
+  }
+}
