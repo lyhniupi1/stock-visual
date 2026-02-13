@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
-interface Stock {
+export interface Stock {
   code: string;
   codeName: string;
 }
@@ -10,58 +10,35 @@ interface Stock {
 interface StockSearchSelectProps {
   value: string;
   onSelect: (stock: Stock) => void;
+  stocks: Stock[]; // 从父组件传入股票列表
   placeholder?: string;
 }
 
 export default function StockSearchSelect({
   value,
   onSelect,
+  stocks,
   placeholder = '搜索股票代码或名称...',
 }: StockSearchSelectProps) {
   const [query, setQuery] = useState('');
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [filteredStocks, setFilteredStocks] = useState<Stock[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 加载所有股票列表（只加载一次）
-  useEffect(() => {
-    const loadStocks = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/stocks/codes');
-        if (response.ok) {
-          const data = await response.json();
-          setStocks(data);
-        }
-      } catch (error) {
-        console.error('Failed to load stocks:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadStocks();
-  }, []);
-
-  // 过滤股票
-  useEffect(() => {
+  // 过滤股票 - 使用 useMemo 避免重复计算
+  const filteredStocks = useMemo(() => {
     if (!query.trim()) {
-      setFilteredStocks([]);
-      return;
+      return [];
     }
 
     const lowerQuery = query.toLowerCase();
-    const filtered = stocks
+    return stocks
       .filter(
         (stock) =>
           stock.code.toLowerCase().includes(lowerQuery) ||
           stock.codeName.toLowerCase().includes(lowerQuery)
       )
       .slice(0, 50); // 限制显示数量
-
-    setFilteredStocks(filtered);
   }, [query, stocks]);
 
   // 点击外部关闭下拉框
@@ -90,14 +67,11 @@ export default function StockSearchSelect({
     }
   }, [value, stocks, query]);
 
-  const handleSelect = useCallback(
-    (stock: Stock) => {
-      setQuery(`${stock.code} - ${stock.codeName}`);
-      onSelect(stock);
-      setIsOpen(false);
-    },
-    [onSelect]
-  );
+  const handleSelect = (stock: Stock) => {
+    setQuery(`${stock.code} - ${stock.codeName}`);
+    onSelect(stock);
+    setIsOpen(false);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -112,18 +86,6 @@ export default function StockSearchSelect({
 
   const handleFocus = () => {
     setIsOpen(true);
-    if (query && filteredStocks.length === 0) {
-      // 重新过滤当前查询
-      const lowerQuery = query.toLowerCase();
-      const filtered = stocks
-        .filter(
-          (stock) =>
-            stock.code.toLowerCase().includes(lowerQuery) ||
-            stock.codeName.toLowerCase().includes(lowerQuery)
-        )
-        .slice(0, 50);
-      setFilteredStocks(filtered);
-    }
   };
 
   return (
@@ -138,12 +100,6 @@ export default function StockSearchSelect({
         className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         autoComplete="off"
       />
-
-      {loading && (
-        <div className="absolute right-3 top-2.5">
-          <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-        </div>
-      )}
 
       {isOpen && (
         <div
