@@ -278,6 +278,111 @@ export default function PortfolioDetailPage() {
           </div>
         )}
       </div>
+      {/* 组合综合收益率分析（等份额） */}
+      {stockDetails.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">📊 组合综合收益率分析（等份额）</h2>
+          {(() => {
+            // 过滤掉没有t1或t2数据的股票
+            const validDetails = stockDetails.filter(
+              d => d.t1Data?.close && d.t2Data?.close
+            );
+            
+            if (validDetails.length === 0) {
+              return (
+                <div className="text-center py-8 text-gray-500">
+                  <p>没有足够的数据计算组合收益率</p>
+                </div>
+              );
+            }
+
+            // 等份额计算：假设每只股票投入相同的金额
+            // 买入价格之和
+            const totalT1Value = validDetails.reduce(
+              (sum, d) => sum + d.t1Data!.close,
+              0
+            );
+            // 卖出价格之和
+            const totalT2Value = validDetails.reduce(
+              (sum, d) => sum + d.t2Data!.close,
+              0
+            );
+            
+            // 组合收益率 = (期末总值 - 期初总值) / 期初总值 * 100
+            const portfolioReturn = ((totalT2Value - totalT1Value) / totalT1Value) * 100;
+            
+            // 个股平均收益率
+            const avgStockReturn = validDetails.reduce((sum, d) => {
+              const stockReturn = ((d.t2Data!.close - d.t1Data!.close) / d.t1Data!.close) * 100;
+              return sum + stockReturn;
+            }, 0) / validDetails.length;
+
+            // 计算时间差（天数）
+            const t1Date = new Date(validDetails[0].t1Data!.date);
+            const t2Date = new Date(validDetails[0].t2Data!.date);
+            const daysDiff = Math.max(1, Math.ceil((t2Date.getTime() - t1Date.getTime()) / (1000 * 60 * 60 * 24)));
+            const years = daysDiff / 365;
+            
+            // 年化收益率 = (1 + 收益率) ^ (1 / 年数) - 1
+            const annualizedReturn = (Math.pow(1 + portfolioReturn / 100, 1 / years) - 1) * 100;
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="text-sm text-blue-600 mb-1">T1 期初总值</div>
+                  <div className="text-xl font-bold text-blue-900">
+                    ¥{totalT1Value.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-blue-500 mt-1">
+                    {validDetails.length} 只股票等份额
+                  </div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="text-sm text-green-600 mb-1">T2 期末总值</div>
+                  <div className="text-xl font-bold text-green-900">
+                    ¥{totalT2Value.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-green-500 mt-1">
+                    较期初 {totalT2Value >= totalT1Value ? '+' : ''}
+                    ¥{(totalT2Value - totalT1Value).toFixed(2)}
+                  </div>
+                </div>
+                <div className={`rounded-lg p-4 ${portfolioReturn >= 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                  <div className={`text-sm mb-1 ${portfolioReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    组合收益率
+                  </div>
+                  <div className={`text-2xl font-bold ${portfolioReturn >= 0 ? 'text-red-900' : 'text-green-900'}`}>
+                    {portfolioReturn >= 0 ? '+' : ''}{portfolioReturn.toFixed(2)}%
+                  </div>
+                  <div className={`text-xs mt-1 ${portfolioReturn >= 0 ? 'text-red-500' : 'text-green-500'}`}>
+                    等份额加权
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="text-sm text-gray-600 mb-1">个股平均收益率</div>
+                  <div className={`text-xl font-bold ${avgStockReturn >= 0 ? 'text-red-900' : 'text-green-900'}`}>
+                    {avgStockReturn >= 0 ? '+' : ''}{avgStockReturn.toFixed(2)}%
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    算术平均
+                  </div>
+                </div>
+                <div className={`rounded-lg p-4 ${annualizedReturn >= 0 ? 'bg-purple-50' : 'bg-orange-50'}`}>
+                  <div className={`text-sm mb-1 ${annualizedReturn >= 0 ? 'text-purple-600' : 'text-orange-600'}`}>
+                    年化收益率
+                  </div>
+                  <div className={`text-2xl font-bold ${annualizedReturn >= 0 ? 'text-purple-900' : 'text-orange-900'}`}>
+                    {annualizedReturn >= 0 ? '+' : ''}{annualizedReturn.toFixed(2)}%
+                  </div>
+                  <div className={`text-xs mt-1 ${annualizedReturn >= 0 ? 'text-purple-500' : 'text-orange-500'}`}>
+                    持有 {daysDiff} 天（{years.toFixed(2)} 年）
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* 预留功能区 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
