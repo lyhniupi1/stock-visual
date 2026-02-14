@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createPortfolio, PortfolioStock } from '@/lib/api';
 import StockSearchSelect, { Stock } from '@/components/StockSearchSelect';
+import { sourceMapsEnabled } from 'process';
 
 export default function CreatePortfolioPage() {
   const router = useRouter();
@@ -58,8 +59,10 @@ export default function CreatePortfolioPage() {
 
   // 选择股票
   const handleSelectStock = (index: number, code: string, name: string) => {
+    console.log(code, name, index);
     const newStocks = [...stocks];
     newStocks[index] = { ...newStocks[index], code, name };
+    console.log(JSON.stringify(newStocks));
     setStocks(newStocks);
   };
 
@@ -71,14 +74,12 @@ export default function CreatePortfolioPage() {
       return;
     }
 
-    // 过滤掉未填写的股票
-    const validStocks = stocks.filter(s => s.code && s.name && s.quantity > 0 && s.costPrice > 0);
 
     try {
       setSubmitting(true);
       await createPortfolio({
         name: name.trim(),
-        stocks: validStocks,
+        stocks: stocks,
         createdAt,
       });
       router.push('/portfolios');
