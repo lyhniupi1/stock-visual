@@ -414,3 +414,63 @@ export async function deletePortfolio(id: number): Promise<void> {
     throw error;
   }
 }
+
+// ==================== Batch Stock API ====================
+
+/**
+ * 批量获取多个股票在指定日期范围内的数据
+ * @param codes 股票代码数组
+ * @param startDate 开始日期 (YYYY-MM-DD)
+ * @param endDate 结束日期 (YYYY-MM-DD)
+ * @returns 每个股票对应的数据映射
+ */
+export async function fetchMultipleStocksByDateRange(
+  codes: string[],
+  startDate: string,
+  endDate: string
+): Promise<Record<string, StockData[]>> {
+  try {
+    const response = await fetch(getApiUrl('/stocks/batch/range'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ codes, startDate, endDate }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch multiple stocks by date range:', error);
+    return {};
+  }
+}
+
+/**
+ * 批量获取多个股票在指定日期（或之前最近日期）的数据
+ * @param codes 股票代码数组
+ * @param date 目标日期 (YYYY-MM-DD)
+ * @returns 每个股票对应的数据映射
+ */
+export async function fetchMultipleStocksByDate(
+  codes: string[],
+  date: string
+): Promise<Record<string, StockData | null>> {
+  try {
+    const response = await fetch(getApiUrl('/stocks/batch/date'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ codes, date }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch multiple stocks by date:', error);
+    return {};
+  }
+}

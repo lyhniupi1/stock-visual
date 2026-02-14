@@ -185,4 +185,74 @@ export class StockService {
       order: { dateStr: 'DESC' },
     });
   }
+
+  /**
+   * 批量查询多个股票在指定日期范围内的数据
+   * @param codes 股票代码数组
+   * @param startDate 开始日期
+   * @param endDate 结束日期
+   * @returns 每个股票对应的数据映射
+   */
+  async findMultipleStocksByDateRange(
+    codes: string[],
+    startDate: string,
+    endDate: string,
+  ): Promise<Map<string, StockDayPepbData[]>> {
+    const result = new Map<string, StockDayPepbData[]>();
+    
+    if (codes.length === 0) {
+      return result;
+    }
+
+    // 查询所有指定股票在日期范围内的数据
+    const stocks = await this.stockRepository
+      .createQueryBuilder('stock')
+      .where('stock.code IN (:...codes)', { codes })
+      .andWhere('stock.date >= :startDate', { startDate })
+      .andWhere('stock.date <= :endDate', { endDate })
+      .orderBy('stock.code', 'ASC')
+      .addOrderBy('stock.date', 'ASC')
+      .getMany();
+
+    // 按股票代码分组
+    for (const stock of stocks) {
+      if (!result.has(stock.code)) {
+        result.set(stock.code, []);
+      }
+      result.get(stock.code)!.push(stock);
+    }
+
+    return result;
+  }
+
+  /**
+   * 获取多个股票在指定日期的最新数据（最接近该日期的数据）
+   * @param codes 股票代码数组
+   * @param date 目标日期
+   * @returns 每个股票在目标日期或之前最近的数据
+   */
+  async findMultipleStocksByDate(
+    codes: string[],
+    date: string,
+  ): Promise<Map<string, StockDayPepbData | null>> {
+    const result = new Map<string, StockDayPepbData | null>();
+    
+    if (codes.length === 0) {
+      return result;
+    }
+
+    // 为每个股票查询最接近目标日期的数据
+    for (const code of codes) {
+      const stockData = await this.stockRepository
+        .createQueryBuilder('stock')
+        .where('stock.code = :code', { code })
+        .andWhere('stock.date <= :date', { date })
+        .orderBy('stock.date', 'DESC')
+        .getOne();
+      
+      result.set(code, stockData);
+    }
+
+    return result;
+  }
 }

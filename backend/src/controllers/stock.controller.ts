@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Query, Param, Body } from '@nestjs/common';
 import { StockService } from '../services/stock.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
@@ -79,5 +79,38 @@ export class StockController {
     @Param('code') code: string,
   ): Promise<StockBonusData | null> {
     return this.stockService.getLatestStockBonusData(code);
+  }
+
+  @Post('batch/range')
+  async getMultipleStocksByDateRange(
+    @Body() body: { codes: string[]; startDate: string; endDate: string },
+  ): Promise<Record<string, StockDayPepbData[]>> {
+    const result = await this.stockService.findMultipleStocksByDateRange(
+      body.codes,
+      body.startDate,
+      body.endDate,
+    );
+    // 将Map转换为普通对象
+    const obj: Record<string, StockDayPepbData[]> = {};
+    result.forEach((value, key) => {
+      obj[key] = value;
+    });
+    return obj;
+  }
+
+  @Post('batch/date')
+  async getMultipleStocksByDate(
+    @Body() body: { codes: string[]; date: string },
+  ): Promise<Record<string, StockDayPepbData | null>> {
+    const result = await this.stockService.findMultipleStocksByDate(
+      body.codes,
+      body.date,
+    );
+    // 将Map转换为普通对象
+    const obj: Record<string, StockDayPepbData | null> = {};
+    result.forEach((value, key) => {
+      obj[key] = value;
+    });
+    return obj;
   }
 }
