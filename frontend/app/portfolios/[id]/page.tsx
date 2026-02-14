@@ -9,6 +9,7 @@ import {
   fetchMultipleStocksByTwoDates,
   StockData
 } from '@/lib/api';
+import PortfolioChart from '@/components/PortfolioChart';
 
 interface StockDetail {
   code: string;
@@ -381,6 +382,17 @@ export default function PortfolioDetailPage() {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* 组合等权重净值走势图 */}
+      {stockDetails.length > 0 && t1 && t2 && (
+        <div className="mb-8">
+          <PortfolioChart
+            stockCodes={stockDetails.map(s => s.code)}
+            startDate={t1}
+            endDate={t2}
+          />
         </div>
       )}
 
