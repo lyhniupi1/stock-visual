@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { 
-  getPortfolioById, 
-  Portfolio, 
-  fetchMultipleStocksByDate,
-  StockData 
+import {
+  getPortfolioById,
+  Portfolio,
+  fetchMultipleStocksByTwoDates,
+  StockData
 } from '@/lib/api';
 
 interface StockDetail {
@@ -54,21 +54,19 @@ export default function PortfolioDetailPage() {
       const stocks = portfolio.stocks;
       const codes = stocks.map(s => s.code);
       
-      // 并行获取t1和t2的数据
-      const [t1Results, t2Results] = await Promise.all([
-        fetchMultipleStocksByDate(codes, t1),
-        fetchMultipleStocksByDate(codes, t2)
-      ]);
+      // 一次性获取所有股票在t1和t2的数据
+      const results = await fetchMultipleStocksByTwoDates(codes, t1, t2);
 
       // 合并数据
       const details: StockDetail[] = stocks.map(stock => {
+        const stockResult = results[stock.code];
         return {
           code: stock.code,
           name: stock.name,
           quantity: stock.quantity,
           costPrice: stock.costPrice,
-          t1Data: t1Results[stock.code] || null,
-          t2Data: t2Results[stock.code] || null,
+          t1Data: stockResult?.t1 || null,
+          t2Data: stockResult?.t2 || null,
         };
       });
 

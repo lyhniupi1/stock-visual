@@ -113,4 +113,21 @@ export class StockController {
     });
     return obj;
   }
+
+  @Post('batch/compare')
+  async getMultipleStocksByTwoDates(
+    @Body() body: { codes: string[]; t1: string; t2: string },
+  ): Promise<Record<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }>> {
+    const result = await this.stockService.findMultipleStocksByTwoDates(
+      body.codes,
+      body.t1,
+      body.t2,
+    );
+    // 将Map转换为普通对象
+    const obj: Record<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }> = {};
+    result.forEach((value, key) => {
+      obj[key] = value;
+    });
+    return obj;
+  }
 }

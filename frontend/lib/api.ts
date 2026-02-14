@@ -474,3 +474,33 @@ export async function fetchMultipleStocksByDate(
     return {};
   }
 }
+
+/**
+ * 一次性批量获取多个股票在两个日期（t1和t2）的数据
+ * @param codes 股票代码数组
+ * @param t1 开始日期 (YYYY-MM-DD)
+ * @param t2 结束日期 (YYYY-MM-DD)
+ * @returns 每个股票在t1和t2的数据映射 { code: { t1: data, t2: data } }
+ */
+export async function fetchMultipleStocksByTwoDates(
+  codes: string[],
+  t1: string,
+  t2: string
+): Promise<Record<string, { t1: StockData | null; t2: StockData | null }>> {
+  try {
+    const response = await fetch(getApiUrl('/stocks/batch/compare'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ codes, t1, t2 }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch multiple stocks by two dates:', error);
+    return {};
+  }
+}

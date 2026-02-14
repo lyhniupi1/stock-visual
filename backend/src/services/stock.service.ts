@@ -255,4 +255,72 @@ export class StockService {
 
     return result;
   }
+
+  /**
+   * 批量获取多个股票在两个日期（t1和t2）的数据
+   * 一次性查询所有股票在t1和t2日期（或之前最近交易日）的数据
+   * @param codes 股票代码数组
+   * @param t1 开始日期
+   * @param t2 结束日期
+   * @returns 每个股票在t1和t2的数据 { code: { t1: data, t2: data } }
+   */
+  async findMultipleStocksByTwoDates(
+    codes: string[],
+    t1: string,
+    t2: string,
+  ): Promise<Map<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }>> {
+    const result = new Map<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }>();
+    
+    if (codes.length === 0) {
+      return result;
+    }
+
+    // 初始化结果
+    for (const code of codes) {
+      result.set(code, { t1: null, t2: null });
+    }
+
+    // 查询所有股票在日期范围内的数据（用于找t1和t2最近的数据）
+    const allData = await this.stockRepository
+      .createQueryBuilder('stock')
+      .where('stock.code IN (:...codes)', { codes })
+      .andWhere('stock.date <= :t2', { t2 })
+      .orderBy('stock.code', 'ASC')
+      .addOrderBy('stock.date', 'DESC')
+      .getMany();
+
+    // 按股票分组处理
+    const groupedByCode = new Map<string, StockDayPepbData[]>();
+    for (const data of allData) {
+      if (!groupedByCode.has(data.code)) {
+        groupedByCode.set(data.code, []);
+      }
+      groupedByCode.get(data.code)!.push(data);
+    }
+
+    // 为每个股票找到t1和t2最近的数据
+    for (const code of codes) {
+      const stockDataList = groupedByCode.get(code) || [];
+      
+      let t1Data: StockDayPepbData | null = null;
+      let t2Data: StockDayPepbData | null = null;
+
+      for (const data of stockDataList) {
+        // t2数据：找<=t2的最新数据
+        if (!t2Data && data.date <= t2) {
+          t2Data = data;
+        }
+        // t1数据：找<=t1的最新数据
+        if (!t1Data && data.date <= t1) {
+          t1Data = data;
+        }
+        // 都找到了就退出
+        if (t1Data && t2Data) break;
+      }
+
+      result.set(code, { t1: t1Data, t2: t2Data });
+    }
+
+    return result;
+  }
 }
