@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   getPortfolioById,
@@ -28,8 +28,19 @@ export default function PortfolioDetailPage() {
   const [loading, setLoading] = useState(true);
   const [t1, setT1] = useState<string>('');
   const [t2, setT2] = useState<string>('');
+
   const [stockDetails, setStockDetails] = useState<StockDetail[]>([]);
   const [fetchingData, setFetchingData] = useState(false);
+
+  // 设置默认日期
+  useEffect(() => {
+    const today = new Date();
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(today.getFullYear() - 1);
+    
+    setT2(today.toISOString().split('T')[0]);
+    setT1(oneYearAgo.toISOString().split('T')[0]);
+  }, []);
 
   // 获取组合详情
   useEffect(() => {
@@ -47,7 +58,7 @@ export default function PortfolioDetailPage() {
   }, [id]);
 
   // 查询股票数据
-  const handleQuery = async () => {
+  const handleQuery = useCallback(async () => {
     if (!portfolio || !t1 || !t2) return;
     
     setFetchingData(true);
@@ -77,7 +88,14 @@ export default function PortfolioDetailPage() {
     } finally {
       setFetchingData(false);
     }
-  };
+  }, [portfolio, t1, t2]);
+
+  // 当 portfolio 和日期都准备好后自动查询
+  useEffect(() => {
+    if (portfolio && t1 && t2) {
+      handleQuery();
+    }
+  }, [portfolio, t1, t2, handleQuery]);
 
   // 计算涨跌幅
   const calculateChange = (t1Data: StockData | null, t2Data: StockData | null) => {
