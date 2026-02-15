@@ -248,8 +248,10 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
       }
     }
 
-    // 计算年化收益率
-    const days = chartData.length;
+    // 计算年化收益率（使用实际日期差，而不是交易日数量）
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     const years = days / 365;
     const annualizedReturn = years > 0 
       ? ((Math.pow(endValue / startValue, 1 / years) - 1) * 100)
@@ -325,6 +327,12 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
               <div className="text-gray-500">年化收益</div>
               <div className={`font-semibold ${stats.annualizedReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {stats.annualizedReturn >= 0 ? '+' : ''}{stats.annualizedReturn.toFixed(2)}%
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-gray-500">持仓天数</div>
+              <div className="font-semibold text-blue-600">
+                {stats.days}天
               </div>
             </div>
           </div>

@@ -319,8 +319,8 @@ export default function PortfolioDetailPage() {
             }, 0) / validDetails.length;
 
             // 计算时间差（天数）
-            const t1Date = new Date(validDetails[0].t1Data!.date);
-            const t2Date = new Date(validDetails[0].t2Data!.date);
+            const t1Date = new Date(t1);
+            const t2Date = new Date(t2);
             const daysDiff = Math.max(1, Math.ceil((t2Date.getTime() - t1Date.getTime()) / (1000 * 60 * 60 * 24)));
             const years = daysDiff / 365;
             
