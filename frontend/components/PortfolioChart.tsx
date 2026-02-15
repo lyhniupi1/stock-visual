@@ -48,6 +48,7 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
   }, [stockCodes, startDate, endDate]);
 
   // 计算等权重净值
+  // 算法：每天计算所有股票收盘价的平均值 Pn，第一天的平均值为 P1，净值 = Pn / P1
   const calculateEqualWeightNetValue = (
     stocksData: Record<string, StockData[]>
   ): ChartDataPoint[] => {
@@ -79,63 +80,38 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
       }
     }
 
-    // 计算每只股票的净值序列
-    const stockNetValues: Record<string, number[]> = {};
+    // 计算每天的等权重收盘价平均值
+    const dailyAvgPrices: { date: string; avgPrice: number }[] = [];
     
-    for (const code of stockCodesList) {
-      const netValues: number[] = [];
-      let currentNetValue = 1; // 初始净值为1
-      let hasValidData = false;
-
-      for (let i = 0; i < allDates.length; i++) {
-        const date = allDates[i];
-        const data = stockDateMap[code][date];
-
-        if (data && data.close > 0) {
-          if (!hasValidData) {
-            // 第一个有效数据点，设为初始值
-            currentNetValue = 1;
-            hasValidData = true;
-          } else {
-            // 根据涨跌幅计算净值变化
-            // pctChg 是百分比涨跌幅，如 5.23 表示上涨 5.23%
-            const dailyReturn = (data.pctChg || 0) / 100;
-            currentNetValue = currentNetValue * (1 + dailyReturn);
-          }
-          netValues.push(currentNetValue);
-        } else {
-          // 没有数据，保持前值
-          if (hasValidData) {
-            netValues.push(currentNetValue);
-          } else {
-            netValues.push(1); // 还没有有效数据时，默认为1
-          }
-        }
-      }
-      stockNetValues[code] = netValues;
-    }
-
-    // 计算等权重组合净值（所有股票净值的平均）
-    const portfolioNetValues: ChartDataPoint[] = [];
-    for (let i = 0; i < allDates.length; i++) {
-      let sumNetValue = 0;
-      let validStockCount = 0;
+    for (const date of allDates) {
+      let sumClose = 0;
+      let validCount = 0;
 
       for (const code of stockCodesList) {
-        const netValues = stockNetValues[code];
-        if (netValues && netValues.length > i) {
-          sumNetValue += netValues[i];
-          validStockCount++;
+        const data = stockDateMap[code][date];
+        if (data && data.close > 0) {
+          sumClose += data.close;
+          validCount++;
         }
       }
 
-      if (validStockCount > 0) {
-        portfolioNetValues.push({
-          time: allDates[i],
-          value: sumNetValue / validStockCount,
+      if (validCount > 0) {
+        dailyAvgPrices.push({
+          date,
+          avgPrice: sumClose / validCount,
         });
       }
     }
+
+    if (dailyAvgPrices.length === 0) return [];
+
+    // 以第一天的平均价格作为基准计算净值
+    const basePrice = dailyAvgPrices[0].avgPrice;
+    
+    const portfolioNetValues: ChartDataPoint[] = dailyAvgPrices.map(item => ({
+      time: item.date,
+      value: basePrice > 0 ? item.avgPrice / basePrice : 1,
+    }));
 
     return portfolioNetValues;
   };
