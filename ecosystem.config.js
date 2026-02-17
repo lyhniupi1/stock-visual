@@ -6,7 +6,8 @@ module.exports = {
       cwd: '/var/www/stock-visual',
       env: {
         NODE_ENV: 'production',
-        PORT: 8080
+        PORT: 8080,
+        DB_DATABASE: '/root/magicFormula/src/data/magicFormulaData.db'
       },
       instances: 1,
       autorestart: true,
