@@ -14,10 +14,10 @@ import { PortfolioService } from './services/portfolio.service';
   imports: [
     TypeOrmModule.forRoot({
       type: 'sqlite',
-      database: '../data/stocks.db',
+      database: process.env.DB_DATABASE || '../data/stocks.db',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // 开发环境自动同步，生产环境设为false
-      logging: true,
+      synchronize: process.env.NODE_ENV !== 'production', // 开发环境自动同步，生产环境设为false
+      logging: process.env.NODE_ENV !== 'production',
     }),
     TypeOrmModule.forFeature([StockDayPepbData, StockBonusData, Portfolio]),
   ],
