@@ -361,6 +361,11 @@ pm2 restart all
 pm2 restart stock-visual-backend
 pm2 restart stock-visual-frontend
 
+# 修改pm2环境变量后重启 需要删掉后 重新刷入环境变量
+pm2 delete  stock-visual-frontend
+pm2 delete stock-visual-backend
+pm2 start ecosystem.config.js --env production
+
 # 重启 Nginx
 sudo systemctl restart nginx
 ```
