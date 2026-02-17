@@ -7,8 +7,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 8080,
-        DB_DATABASE: '/root/magicFormula/src/data/magicFormulaData.db',
-        NEXT_BACKEND_URL: 'http://localhost:8080'
+        DB_DATABASE: '/root/magicFormula/src/data/magicFormulaData.db'
       },
       instances: 1,
       autorestart: true,
@@ -26,7 +25,8 @@ module.exports = {
       cwd: '/var/www/stock-visual/frontend',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 3000,
+        NEXT_BACKEND_URL: 'http://localhost:8080'
       },
       instances: 1,
       autorestart: true,
