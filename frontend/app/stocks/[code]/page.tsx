@@ -23,7 +23,7 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   } catch (error) {
     console.error('Failed to fetch data:', error);
     // 如果获取股票代码失败，只获取历史数据
-    historyData = await fetchStockHistory(code, 0);
+    historyData = await fetchStockHistory(code, 1);
     stockCodes = [];
   }
 
@@ -144,14 +144,6 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
             </Link>
           </div>
         </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <div className="text-sm text-gray-500 mb-2">数据点数</div>
-          <div className="text-3xl font-bold text-gray-900">
-            {historyData.length}
-          </div>
-          <div className="text-sm text-gray-500 mt-2">交易日数量</div>
-        </div>
       </div>
 
       {/* K线图 */}
@@ -160,62 +152,6 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
         <StockChart stockCode={code} stockName={displayName} limit={0} />
       </div>
 
-      {/* 数据表格 */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">近期交易数据</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开盘</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">收盘</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最高</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最低</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">涨跌幅</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">成交量</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {historyData.slice(-10).reverse().map((item) => (
-                <tr key={item.date} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {new Date(item.date).toLocaleDateString('zh-CN')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    ¥{item.open?.toFixed(2) || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`font-bold ${item.close && item.open ? 
-                      (item.close >= item.open ? 'text-green-600' : 'text-red-600') : 'text-gray-900'}`}>
-                      ¥{item.close?.toFixed(2) || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    ¥{item.high?.toFixed(2) || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    ¥{item.low?.toFixed(2) || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-sm font-medium ${item.pctChg ? 
-                      (item.pctChg > 0 ? 'bg-green-100 text-green-800' : 
-                       item.pctChg < 0 ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800') : 'bg-gray-100 text-gray-800'}`}>
-                      {item.pctChg ? `${item.pctChg > 0 ? '+' : ''}${item.pctChg.toFixed(2)}%` : '0.00%'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {item.volume ? `${(item.volume / 10000).toFixed(1)}万` : 'N/A'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 text-sm text-gray-500">
-          <p>显示最近10个交易日数据，共 {historyData.length} 个交易日</p>
-        </div>
-      </div>
 
       {/* 说明区域 */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
