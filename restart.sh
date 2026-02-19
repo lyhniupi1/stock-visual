@@ -50,12 +50,6 @@ main() {
     log_info "开始重启股票数据可视化项目..."
     log_info "当前工作目录: $(pwd)"
     
-    # 检查必要命令
-    check_command "git"
-    check_command "pm2"
-    check_command "yarn"
-    check_command "node"
-    
     # 检查目录
     check_current_dir
     
