@@ -70,6 +70,15 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
     loadDataForRange();
   }, [timeRange, stockCode]);
 
+  // 获取响应式图表高度
+  const getChartHeight = () => {
+    if (typeof window === 'undefined') return 400;
+    const width = window.innerWidth;
+    if (width < 640) return 300; // 手机
+    if (width < 1024) return 400; // 平板
+    return 500; // 桌面
+  };
+
   // 初始化图表
   useEffect(() => {
     if (!chartContainerRef.current || stockData.length === 0) return;
@@ -93,12 +102,15 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       const container = chartContainerRef.current;
       if (!container) return;
 
+      const chartHeight = getChartHeight();
+
       const chart = createChart(container, {
         width: container.clientWidth,
-        height: 500,
+        height: chartHeight,
         layout: {
           background: { color: '#ffffff' },
           textColor: '#374151',
+          fontSize: window.innerWidth < 640 ? 10 : 12,
         },
         grid: {
           vertLines: { color: '#e5e7eb' },
@@ -109,11 +121,16 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
         },
         rightPriceScale: {
           borderColor: '#d1d5db',
+          scaleMargins: {
+            top: 0.1,
+            bottom: window.innerWidth < 640 ? 0.5 : 0.4,
+          },
         },
         timeScale: {
           borderColor: '#d1d5db',
           timeVisible: true,
           secondsVisible: false,
+          minBarSpacing: window.innerWidth < 640 ? 0.1 : 0.2,
         },
       });
 
@@ -206,13 +223,21 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       // 处理窗口大小变化
       const handleResize = () => {
         if (chart && container) {
+          const newHeight = getChartHeight();
           chart.applyOptions({
             width: container.clientWidth,
+            height: newHeight,
+            layout: {
+              fontSize: window.innerWidth < 640 ? 10 : 12,
+            },
           });
         }
       };
 
       window.addEventListener('resize', handleResize);
+      
+      // 初始调整
+      handleResize();
     };
 
     const updateCrosshairWithLatestData = () => {
@@ -335,31 +360,31 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
   return (
     <div className="relative w-full">
       {/* 图表标题和时间范围选择器 */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
             {stockName || stockCode} K线图
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             数据来源：本地数据库，共 {stockData.length} 个交易日数据
           </p>
         </div>
         
         {/* 时间范围选择器 */}
-        <div className="flex space-x-2 mt-2 md:mt-0">
+        <div className="flex flex-wrap gap-1 sm:gap-2">
           {(['1M', '3M', '6M', '1Y', 'ALL'] as const).map((range) => (
             <button
               key={range}
               onClick={() => handleTimeRangeChange(range)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              className={`px-2 sm:px-3 py-1 text-xs sm:text-sm rounded-md transition-colors ${
                 timeRange === range
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {range === '1M' ? '1个月' : 
-               range === '3M' ? '3个月' : 
-               range === '6M' ? '6个月' : 
+              {range === '1M' ? '1个月' :
+               range === '3M' ? '3个月' :
+               range === '6M' ? '6个月' :
                range === '1Y' ? '1年' : '全部'}
             </button>
           ))}
@@ -368,43 +393,43 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
 
       {/* 十字线数据展示 */}
       {crosshairData && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <p className="text-sm text-gray-500">日期</p>
-              <p className="font-semibold">{crosshairData.time}</p>
+              <p className="text-xs sm:text-sm text-gray-500">日期</p>
+              <p className="font-semibold text-sm sm:text-base">{crosshairData.time}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">开盘</p>
-              <p className="font-semibold">{crosshairData.open.toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">开盘</p>
+              <p className="font-semibold text-sm sm:text-base">{crosshairData.open.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">最高</p>
-              <p className="font-semibold">{crosshairData.high.toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">最高</p>
+              <p className="font-semibold text-sm sm:text-base">{crosshairData.high.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">最低</p>
-              <p className="font-semibold">{crosshairData.low.toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">最低</p>
+              <p className="font-semibold text-sm sm:text-base">{crosshairData.low.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">收盘</p>
-              <p className="font-semibold">{crosshairData.close.toFixed(2)}</p>
+              <p className="text-xs sm:text-sm text-gray-500">收盘</p>
+              <p className="font-semibold text-sm sm:text-base">{crosshairData.close.toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">涨跌</p>
-              <p className={`font-semibold ${crosshairData.change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className="text-xs sm:text-sm text-gray-500">涨跌</p>
+              <p className={`font-semibold text-sm sm:text-base ${crosshairData.change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {crosshairData.change >= 0 ? '+' : ''}{crosshairData.change.toFixed(2)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">涨跌幅</p>
-              <p className={`font-semibold ${crosshairData.changePercent >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className="text-xs sm:text-sm text-gray-500">涨跌幅</p>
+              <p className={`font-semibold text-sm sm:text-base ${crosshairData.changePercent >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {crosshairData.changePercent >= 0 ? '+' : ''}{crosshairData.changePercent.toFixed(2)}%
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">成交量</p>
-              <p className="font-semibold">
+              <p className="text-xs sm:text-sm text-gray-500">成交量</p>
+              <p className="font-semibold text-sm sm:text-base">
                 {(crosshairData.volume / 10000).toFixed(1)}万手
               </p>
             </div>
@@ -419,25 +444,25 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       <div ref={chartContainerRef} className="w-full border border-gray-200 rounded-lg overflow-hidden" />
       
       {/* 图例和说明 */}
-      <div className="mt-4 flex flex-wrap items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="mt-4 flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-green-500 mr-2"></div>
-            <span className="text-sm text-gray-600">上涨</span>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 mr-1 sm:mr-2"></div>
+            <span className="text-xs sm:text-sm text-gray-600">上涨</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-red-500 mr-2"></div>
-            <span className="text-sm text-gray-600">下跌</span>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 mr-1 sm:mr-2"></div>
+            <span className="text-xs sm:text-sm text-gray-600">下跌</span>
           </div>
           <div className="flex items-center">
-            <div className="w-4 h-4 bg-gray-400 mr-2"></div>
-            <span className="text-sm text-gray-600">成交量</span>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-400 mr-1 sm:mr-2"></div>
+            <span className="text-xs sm:text-sm text-gray-600">成交量</span>
           </div>
         </div>
         
-        <div className="text-sm text-gray-500 mt-2 md:mt-0">
-          <p>绿色表示上涨（收盘价≥开盘价），红色表示下跌（收盘价＜开盘价）</p>
-          <p className="mt-1">支持鼠标悬停查看详细数据，拖动图表调整时间范围</p>
+        <div className="text-xs sm:text-sm text-gray-500 max-w-full">
+          <p className="mb-1">绿色表示上涨（收盘价≥开盘价），红色表示下跌（收盘价＜开盘价）</p>
+          <p>支持鼠标悬停查看详细数据，拖动图表调整时间范围</p>
         </div>
       </div>
     </div>

@@ -91,55 +91,55 @@ export default function PortfolioList() {
       {portfolios.map((portfolio) => (
         <div
           key={portfolio.id}
-          className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-100"
+          className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6 border border-gray-100"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             {/* 组合信息 */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+            <div className="flex-1 w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 items-center">
               {/* 组合名称 */}
-              <div className="md:col-span-1">
-                <h3 className="text-lg font-bold text-gray-900">{portfolio.name}</h3>
-                <p className="text-sm text-gray-500">组合 #{portfolio.id}</p>
+              <div className="col-span-2 sm:col-span-1">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900">{portfolio.name}</h3>
+                <p className="text-xs sm:text-sm text-gray-500">组合 #{portfolio.id}</p>
               </div>
 
               {/* 持仓数目 */}
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-800">{portfolio.stockCount}</p>
-                <p className="text-sm text-gray-500">持仓股票</p>
+                <p className="text-xl sm:text-2xl font-bold text-gray-800">{portfolio.stockCount}</p>
+                <p className="text-xs sm:text-sm text-gray-500">持仓股票</p>
               </div>
 
               {/* 建仓时间 */}
               <div className="text-center">
-                <p className="text-lg font-medium text-gray-800">{portfolio.createdAt}</p>
-                <p className="text-sm text-gray-500">建仓时间</p>
+                <p className="text-base sm:text-lg font-medium text-gray-800">{portfolio.createdAt}</p>
+                <p className="text-xs sm:text-sm text-gray-500">建仓时间</p>
               </div>
 
               {/* 当前市值 */}
               <div className="text-center">
-                <p className="text-lg font-medium text-gray-800">{formatMoney(portfolio.currentValue)}</p>
-                <p className="text-sm text-gray-500">当前市值</p>
+                <p className="text-base sm:text-lg font-medium text-gray-800">{formatMoney(portfolio.currentValue)}</p>
+                <p className="text-xs sm:text-sm text-gray-500">当前市值</p>
               </div>
 
               {/* 盈亏百分比 */}
               <div className="text-center">
-                <p className={`text-2xl font-bold ${portfolio.profitPercent >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <p className={`text-xl sm:text-2xl font-bold ${portfolio.profitPercent >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {formatPercent(portfolio.profitPercent)}
                 </p>
-                <p className="text-sm text-gray-500">建仓以来盈亏</p>
+                <p className="text-xs sm:text-sm text-gray-500">建仓以来盈亏</p>
               </div>
             </div>
 
             {/* 操作按钮 */}
-            <div className="flex items-center gap-3 ml-6">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end sm:justify-normal">
               <Link
                 href={`/portfolios/${portfolio.id}`}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium flex-1 sm:flex-none text-center"
               >
                 查看明细
               </Link>
               <button
                 onClick={() => handleDelete(portfolio.id)}
-                className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-xs sm:text-sm font-medium flex-1 sm:flex-none"
               >
                 删除
               </button>
