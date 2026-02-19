@@ -132,16 +132,16 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
       const volumeData = stockData.map(item => ({
         time: (new Date(item.date).getTime() / 1000) as any,
         value: item.volume || 0,
-        color: (item.close || 0) >= (item.open || 0) ? '#10b981' : '#ef4444',
+        color: (item.close || 0) >= (item.open || 0) ? '#ef4444' : '#10b981',
       }));
 
       // 添加K线系列 - 使用正确的API
       const candlestickSeries = chart.addSeries(lwc.CandlestickSeries, {
-        upColor: '#10b981',
-        downColor: '#ef4444',
+        upColor: '#ef4444',
+        downColor: '#10b981',
         borderVisible: false,
-        wickUpColor: '#10b981',
-        wickDownColor: '#ef4444',
+        wickUpColor: '#ef4444',
+        wickDownColor: '#10b981',
       });
 
       // 添加成交量系列 - 使用正确的API
@@ -392,13 +392,13 @@ const StockChart = ({ stockCode, stockName = '', limit = 0 }: StockChartProps) =
             </div>
             <div>
               <p className="text-sm text-gray-500">涨跌</p>
-              <p className={`font-semibold ${crosshairData.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`font-semibold ${crosshairData.change >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {crosshairData.change >= 0 ? '+' : ''}{crosshairData.change.toFixed(2)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">涨跌幅</p>
-              <p className={`font-semibold ${crosshairData.changePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`font-semibold ${crosshairData.changePercent >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                 {crosshairData.changePercent >= 0 ? '+' : ''}{crosshairData.changePercent.toFixed(2)}%
               </p>
             </div>
