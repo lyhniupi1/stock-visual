@@ -1,31 +1,81 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import StockChart from '@/components/StockChart';
 import { fetchStockHistory, fetchStockCodes } from '@/lib/api';
 import Link from 'next/link';
 
-interface StockDetailPageProps {
-  params: Promise<{ code: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+interface StockData {
+  code: string;
+  date: string;
+  codeName: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  preclose: number;
+  volume: number;
+  amount: number;
+  adjustflag: number;
+  turn: number;
+  tradestatus: number;
+  pctChg: number;
+  peTTM: number;
+  pbMRQ: number;
+  psTTM: number;
+  pcfNcfTTM: number;
+  isST: number;
 }
 
-export default async function StockDetailPage({ params, searchParams }: StockDetailPageProps) {
-  const { code } = await params;
-  const searchParamsObj = await searchParams;
-  const stockName = typeof searchParamsObj.name === 'string' ? searchParamsObj.name : '';
+interface StockCode {
+  code: string;
+  codeName: string;
+}
+
+export default function StockDetailPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const code = params?.code as string;
+  const stockName = searchParams?.get('name') || '';
   
-  // 并行获取股票历史数据和股票代码列表（用于导航）
-  let historyData: any[] = [];
-  let stockCodes: { code: string; codeName: string }[] = [];
-  try {
-    [historyData, stockCodes] = await Promise.all([
-      fetchStockHistory(code, 0), // 获取全部数据（0表示不限制）
-      fetchStockCodes(),
-    ]);
-  } catch (error) {
-    console.error('Failed to fetch data:', error);
-    // 如果获取股票代码失败，只获取历史数据
-    historyData = await fetchStockHistory(code, 1);
-    stockCodes = [];
-  }
+  const [historyData, setHistoryData] = useState<StockData[]>([]);
+  const [stockCodes, setStockCodes] = useState<StockCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!code) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 并行获取股票历史数据和股票代码列表（用于导航）
+        const [history, codes] = await Promise.all([
+          fetchStockHistory(code, 1), // 获取全部数据（0表示不限制）
+          fetchStockCodes(),
+        ]);
+        setHistoryData(history);
+        setStockCodes(codes);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        setError('获取数据失败，请稍后重试');
+        // 如果获取股票代码失败，只获取历史数据
+        try {
+          const history = await fetchStockHistory(code, 1);
+          setHistoryData(history);
+          setStockCodes([]);
+        } catch (fallbackErr) {
+          console.error('Failed to fetch fallback data:', fallbackErr);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [code]);
 
   // 查找当前股票在列表中的位置
   const currentIndex = stockCodes.findIndex(stock => stock.code === code);
@@ -35,6 +85,36 @@ export default async function StockDetailPage({ params, searchParams }: StockDet
   // 获取当前股票的完整名称
   const currentStock = stockCodes.find(stock => stock.code === code);
   const displayName = stockName || currentStock?.codeName || code;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">正在加载股票数据...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-8">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <h3 className="text-xl font-bold text-red-800 mb-3">加载失败</h3>
+          <p className="text-red-700">{error}</p>
+          <div className="mt-4">
+            <Link
+              href="/stocks"
+              className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+            >
+              返回股票列表
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
