@@ -35,9 +35,9 @@ export class StockService {
   ): Promise<StockDayPepbData[]> {
     return this.stockRepository
       .createQueryBuilder('stock')
-      .where('stock.code = :code', { code })
-      .andWhere('stock.date >= :startDate', { startDate })
+      .where('stock.date >= :startDate', { startDate })
       .andWhere('stock.date <= :endDate', { endDate })
+      .andWhere('stock.code = :code', { code })
       .orderBy('stock.date', 'ASC')
       .getMany();
   }
@@ -207,9 +207,9 @@ export class StockService {
     // 查询所有指定股票在日期范围内的数据
     const stocks = await this.stockRepository
       .createQueryBuilder('stock')
-      .where('stock.code IN (:...codes)', { codes })
-      .andWhere('stock.date >= :startDate', { startDate })
+      .where('stock.date >= :startDate', { startDate })
       .andWhere('stock.date <= :endDate', { endDate })
+      .andWhere('stock.code IN (:...codes)', { codes })
       .orderBy('stock.code', 'ASC')
       .addOrderBy('stock.date', 'ASC')
       .getMany();
@@ -245,8 +245,8 @@ export class StockService {
     for (const code of codes) {
       const stockData = await this.stockRepository
         .createQueryBuilder('stock')
-        .where('stock.code = :code', { code })
-        .andWhere('stock.date <= :date', { date })
+        .where('stock.date <= :date', { date })
+        .andWhere('stock.code = :code', { code })
         .orderBy('stock.date', 'DESC')
         .getOne();
       
