@@ -9,6 +9,9 @@ import { StockController } from './controllers/stock.controller';
 import { PortfolioController } from './controllers/portfolio.controller';
 import { StockService } from './services/stock.service';
 import { PortfolioService } from './services/portfolio.service';
+import { DatabaseService } from './database.service';
+import { SqliteQueryService } from './services/sqlite-query.service';
+import { StockBetterService } from './services/stock-better.service';
 
 @Module({
   imports: [
@@ -22,6 +25,6 @@ import { PortfolioService } from './services/portfolio.service';
     TypeOrmModule.forFeature([StockDayPepbData, StockBonusData, Portfolio]),
   ],
   controllers: [AppController, StockController, PortfolioController],
-  providers: [AppService, StockService, PortfolioService],
+  providers: [AppService, StockService, PortfolioService, DatabaseService, SqliteQueryService, StockBetterService],
 })
 export class AppModule {}

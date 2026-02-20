@@ -1,11 +1,11 @@
 import { Controller, Get, Post, Query, Param, Body } from '@nestjs/common';
-import { StockService } from '../services/stock.service';
+import { StockBetterService } from '../services/stock-better.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
 
 @Controller('api/stocks')
 export class StockController {
-  constructor(private readonly stockService: StockService) {}
+  constructor(private readonly stockService: StockBetterService) {}
 
   @Get()
   async getAllStocks(): Promise<StockDayPepbData[]> {

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
+import { DatabaseService } from '../database.service';
+import { SqliteQueryService } from './sqlite-query.service';
 
 @Injectable()
 export class StockService {
@@ -11,6 +13,8 @@ export class StockService {
     private stockRepository: Repository<StockDayPepbData>,
     @InjectRepository(StockBonusData)
     private stockBonusRepository: Repository<StockBonusData>,
+    private databaseService: DatabaseService,
+    private sqliteQueryService: SqliteQueryService,
   ) {}
 
   async findAll(): Promise<StockDayPepbData[]> {
@@ -322,5 +326,52 @@ export class StockService {
     }
 
     return result;
+  }
+
+  /**
+   * 使用better-sqlite3查询股票数据（高性能版本）
+   */
+  async findStocksByCodeFast(code: string, limit: number = 100): Promise<any[]> {
+    return this.sqliteQueryService.findStocksByCode(code, limit);
+  }
+
+  /**
+   * 使用better-sqlite3获取股票最新数据（高性能版本）
+   */
+  async getLatestStockDataFast(code: string): Promise<any | null> {
+    return this.sqliteQueryService.getLatestStockData(code);
+  }
+
+  /**
+   * 使用better-sqlite3批量查询多个股票的最新数据
+   */
+  async getLatestStockDataBatchFast(codes: string[]): Promise<Map<string, any>> {
+    return this.sqliteQueryService.getLatestStockDataBatch(codes);
+  }
+
+  /**
+   * 使用better-sqlite3获取数据库统计信息
+   */
+  async getDatabaseStats(): Promise<{
+    stockCount: number;
+    bonusCount: number;
+    lastUpdateDate: string;
+    tableSize: number;
+  }> {
+    return this.sqliteQueryService.getDatabaseStats();
+  }
+
+  /**
+   * 使用better-sqlite3执行原生SQL查询
+   */
+  async executeRawQuery<T = any>(sql: string, params: any[] = []): Promise<T[]> {
+    return this.sqliteQueryService.executeRawQuery<T>(sql, params);
+  }
+
+  /**
+   * 创建索引以提高查询性能
+   */
+  async createIndexes(): Promise<void> {
+    return this.sqliteQueryService.createIndexes();
   }
 }
