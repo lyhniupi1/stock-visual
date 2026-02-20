@@ -283,8 +283,8 @@ export class StockService {
     // 查询所有股票在日期范围内的数据（用于找t1和t2最近的数据）
     const allData = await this.stockRepository
       .createQueryBuilder('stock')
-      .where('stock.code IN (:...codes)', { codes })
-      .andWhere('stock.date <= :t2', { t2 })
+      .where('stock.date <= :t2', { t2 })
+      .andWhere('stock.code IN (:...codes)', { codes })
       .orderBy('stock.code', 'ASC')
       .addOrderBy('stock.date', 'DESC')
       .getMany();
