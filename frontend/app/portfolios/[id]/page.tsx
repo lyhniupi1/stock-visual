@@ -28,6 +28,7 @@ export default function PortfolioDetailPage() {
   const [loading, setLoading] = useState(true);
   const [t1, setT1] = useState<string>('');
   const [t2, setT2] = useState<string>('');
+  const [firstQuery, setFirstQuery] = useState<boolean>(true);
 
   const [stockDetails, setStockDetails] = useState<StockDetail[]>([]);
   const [fetchingData, setFetchingData] = useState(false);
@@ -92,8 +93,9 @@ export default function PortfolioDetailPage() {
 
   // 当 portfolio 和日期都准备好后自动查询
   useEffect(() => {
-    if (portfolio && t1 && t2) {
+    if (portfolio && t1 && t2 && firstQuery) {
       handleQuery();
+      setFirstQuery(false);
     }
   }, [portfolio, t1, t2, handleQuery]);
 
