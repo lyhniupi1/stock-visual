@@ -111,9 +111,9 @@ export default function StockSearchSelect({
               {query ? '未找到匹配的股票' : '输入股票代码或名称搜索'}
             </div>
           ) : (
-            filteredStocks.map((stock) => (
+            filteredStocks.map((stock, index) => (
               <button
-                key={stock.code}
+                key={`${stock.code}-${stock.codeName}-${index}`}
                 type="button"
                 onClick={() => handleSelect(stock)}
                 className="w-full px-3 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none text-sm border-b border-gray-100 last:border-b-0"
