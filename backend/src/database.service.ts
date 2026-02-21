@@ -9,7 +9,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   constructor() {
     // 从环境变量获取数据库路径，默认为 ../data/stocks.db
-    this.dbPath = process.env.DB_DATABASE || path.join(__dirname, '..', '..', 'data', 'stocks.db');
+    this.dbPath = process.env.DB_DATABASE || path.join(__dirname, '..', '..', 'data', 'magicFormulaData.db');
   }
 
   async onModuleInit() {

@@ -1,13 +1,39 @@
 "use client";
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import StockSearchSelect, { Stock } from './StockSearchSelect';
+import { fetchStockCodes } from '@/lib/api';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  // 获取股票代码列表
+  useEffect(() => {
+    const loadStockCodes = async () => {
+      try {
+        const stockCodes = await fetchStockCodes();
+        setStocks(stockCodes);
+      } catch (error) {
+        console.error('Failed to load stock codes:', error);
+      }
+    };
+
+    loadStockCodes();
+  }, []);
+
+  const handleStockSelect = (stock: Stock) => {
+    setSelectedStock(stock);
+    // 当选择股票时，跳转到该股票的详情页面
+    if (stock.code) {
+      window.location.href = `/stocks/${stock.code}?name=${stock.codeName}`;
+    }
   };
 
   const navLinks = [
@@ -44,30 +70,26 @@ const Navbar = () => {
               ))}
             </div>
             
-            {/* Search Bar */}
-            <div className="ml-6 relative">
-              <input
-                type="text"
-                placeholder="搜索股票代码..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-48 lg:w-64"
+            {/* Stock Search Select */}
+            <div className="ml-6 w-48 lg:w-64">
+              <StockSearchSelect
+                value={selectedStock?.code || ''}
+                onSelect={handleStockSelect}
+                stocks={stocks}
+                placeholder="搜索股票代码或名称..."
               />
-              <div className="absolute left-3 top-2.5 text-gray-400">
-                🔍
-              </div>
             </div>
           </div>
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-4">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="搜索..."
-                className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-32"
+            <div className="w-32">
+              <StockSearchSelect
+                value={selectedStock?.code || ''}
+                onSelect={handleStockSelect}
+                stocks={stocks}
+                placeholder="搜索股票..."
               />
-              <div className="absolute left-2 top-1.5 text-gray-400 text-sm">
-                🔍
-              </div>
             </div>
             <button
               onClick={toggleMenu}
