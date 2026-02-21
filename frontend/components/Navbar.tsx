@@ -1,32 +1,16 @@
 "use client";
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import StockSearchSelect, { Stock } from './StockSearchSelect';
-import { fetchStockCodes } from '@/lib/api';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [stocks, setStocks] = useState<Stock[]>([]);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
   };
-
-  // 获取股票代码列表
-  useEffect(() => {
-    const loadStockCodes = async () => {
-      try {
-        const stockCodes = await fetchStockCodes();
-        setStocks(stockCodes);
-      } catch (error) {
-        console.error('Failed to load stock codes:', error);
-      }
-    };
-
-    loadStockCodes();
-  }, []);
 
   const handleStockSelect = (stock: Stock) => {
     setSelectedStock(stock);
@@ -75,7 +59,6 @@ const Navbar = () => {
               <StockSearchSelect
                 value={selectedStock?.code || ''}
                 onSelect={handleStockSelect}
-                stocks={stocks}
                 placeholder="搜索股票代码或名称..."
               />
             </div>
@@ -87,7 +70,6 @@ const Navbar = () => {
               <StockSearchSelect
                 value={selectedStock?.code || ''}
                 onSelect={handleStockSelect}
-                stocks={stocks}
                 placeholder="搜索股票..."
               />
             </div>

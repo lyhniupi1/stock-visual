@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { searchStocks } from '@/lib/api';
 
 export interface Stock {
   code: string;
@@ -10,36 +11,54 @@ export interface Stock {
 interface StockSearchSelectProps {
   value: string;
   onSelect: (stock: Stock) => void;
-  stocks: Stock[]; // 从父组件传入股票列表
   placeholder?: string;
 }
 
 export default function StockSearchSelect({
   value,
   onSelect,
-  stocks,
   placeholder = '搜索股票代码或名称...',
 }: StockSearchSelectProps) {
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [filteredStocks, setFilteredStocks] = useState<Stock[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 过滤股票 - 使用 useMemo 避免重复计算
-  const filteredStocks = useMemo(() => {
+  // 搜索股票
+  useEffect(() => {
     if (!query.trim()) {
-      return [];
+      setFilteredStocks([]);
+      return;
     }
 
-    const lowerQuery = query.toLowerCase();
-    return stocks
-      .filter(
-        (stock) =>
-          stock.code.toLowerCase().includes(lowerQuery) ||
-          stock.codeName.toLowerCase().includes(lowerQuery)
-      )
-      .slice(0, 50); // 限制显示数量
-  }, [query, stocks]);
+    // 清除之前的定时器
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // 设置防抖（300ms）
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const results = await searchStocks(query, 20);
+        setFilteredStocks(results);
+      } catch (error) {
+        console.error('搜索股票失败:', error);
+        setFilteredStocks([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [query]);
 
   // 点击外部关闭下拉框
   useEffect(() => {
@@ -57,15 +76,14 @@ export default function StockSearchSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 设置初始值
+  // 设置初始值（如果value是股票代码，需要显示对应的名称）
   useEffect(() => {
-    if (value && stocks.length > 0) {
-      const stock = stocks.find((s) => s.code === value);
-      if (stock && !query) {
-        setQuery(`${stock.code} - ${stock.codeName}`);
-      }
+    if (value && !query) {
+      // 这里可以添加逻辑：如果value是股票代码，可以尝试获取股票名称
+      // 暂时只显示代码
+      setQuery(value);
     }
-  }, [value, stocks, query]);
+  }, [value, query]);
 
   const handleSelect = (stock: Stock) => {
     setQuery(`${stock.code} - ${stock.codeName}`);
@@ -81,6 +99,7 @@ export default function StockSearchSelect({
     // 如果清空了输入，也清空选择
     if (!newValue.trim()) {
       onSelect({ code: '', codeName: '' });
+      setFilteredStocks([]);
     }
   };
 
@@ -106,9 +125,17 @@ export default function StockSearchSelect({
           ref={dropdownRef}
           className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto"
         >
-          {filteredStocks.length === 0 ? (
+          {isLoading ? (
+            <div className="px-3 py-2 text-gray-500 text-sm flex items-center justify-center">
+              <svg className="animate-spin h-4 w-4 mr-2 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              搜索中...
+            </div>
+          ) : filteredStocks.length === 0 ? (
             <div className="px-3 py-2 text-gray-500 text-sm">
-              {query ? '未找到匹配的股票' : '输入股票代码或名称搜索'}
+              {query.trim() ? '未找到匹配的股票' : '输入股票代码或名称搜索'}
             </div>
           ) : (
             filteredStocks.map((stock, index) => (

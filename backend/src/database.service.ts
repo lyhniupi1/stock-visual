@@ -27,6 +27,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       this.db.pragma('journal_mode = WAL');
       this.db.pragma('synchronous = NORMAL');
 
+      // 创建索引以提高搜索性能
+      this.createIndexes();
+
       console.log(`Better-sqlite3数据库连接成功: ${this.dbPath}`);
     } catch (error) {
       console.error('Better-sqlite3数据库连接失败:', error);
@@ -38,6 +41,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     if (this.db) {
       this.db.close();
       console.log('Better-sqlite3数据库连接已关闭');
+    }
+  }
+
+  /**
+   * 创建数据库索引以提高查询性能
+   */
+  private createIndexes(): void {
+    try {
+      // 为股票代码创建索引
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_stock_day_pepb_data_code
+        ON stock_day_pepb_data(code);
+      `);
+      
+      // 为股票名称创建索引
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_stock_day_pepb_data_codeName
+        ON stock_day_pepb_data(codeName);
+      `);
+      
+      // 为日期创建索引（常用于排序和范围查询）
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_stock_day_pepb_data_date
+        ON stock_day_pepb_data(date);
+      `);
+      
+      console.log('数据库索引创建完成');
+    } catch (error) {
+      console.error('创建数据库索引失败:', error);
     }
   }
 

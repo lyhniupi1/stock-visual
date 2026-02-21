@@ -16,29 +16,6 @@ export default function CreatePortfolioPage() {
   });
   const [stocks, setStocks] = useState<PortfolioStock[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  
-  // 所有可用股票列表 - 只加载一次
-  const [availableStocks, setAvailableStocks] = useState<Stock[]>([]);
-  const [loadingStocks, setLoadingStocks] = useState(false);
-
-  // 加载所有股票列表（只加载一次）
-  useEffect(() => {
-    const loadStocks = async () => {
-      try {
-        setLoadingStocks(true);
-        const response = await fetch('/api/stocks/codes');
-        if (response.ok) {
-          const data = await response.json();
-          setAvailableStocks(data);
-        }
-      } catch (error) {
-        console.error('Failed to load stocks:', error);
-      } finally {
-        setLoadingStocks(false);
-      }
-    };
-    loadStocks();
-  }, []);
 
   // 添加股票
   const addStock = () => {
@@ -164,8 +141,7 @@ export default function CreatePortfolioPage() {
                     <StockSearchSelect
                       value={stock.code}
                       onSelect={(selected) => handleSelectStock(index, selected.code, selected.codeName)}
-                      stocks={availableStocks}
-                      placeholder={loadingStocks ? '加载中...' : '搜索股票代码或名称...'}
+                      placeholder="搜索股票代码或名称..."
                     />
                   </div>
 

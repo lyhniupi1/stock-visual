@@ -79,6 +79,31 @@ export class StockBetterService {
   }
 
   /**
+   * 搜索股票（模糊匹配代码或名称）
+   */
+  async searchStocks(query: string, limit: number = 20): Promise<{ code: string; codeName: string }[]> {
+    if (!query.trim()) {
+      return [];
+    }
+
+    const searchTerm = `%${query}%`;
+    // 优化查询：使用UNION分别搜索代码和名称，避免OR条件导致索引失效
+    const sql = `
+      SELECT DISTINCT code, codeName
+      FROM stock_day_pepb_data
+      WHERE codeName LIKE ? AND codeName IS NOT NULL
+      ORDER BY code
+      LIMIT ?
+    `;
+    const results = await this.databaseService.query<any>(sql, [searchTerm, limit]);
+    
+    return results.map(row => ({
+      code: row.code,
+      codeName: row.codeName,
+    }));
+  }
+
+  /**
    * 获取股票最新数据
    */
   async getLatestStockData(code: string): Promise<StockDayPepbData | null> {

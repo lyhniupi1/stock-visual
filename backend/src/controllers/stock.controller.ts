@@ -17,6 +17,14 @@ export class StockController {
     return this.stockService.getStockCodes();
   }
 
+  @Get('search')
+  async searchStocks(
+    @Query('q') query: string,
+    @Query('limit') limit: string = '20',
+  ): Promise<{ code: string; codeName: string }[]> {
+    return this.stockService.searchStocks(query, parseInt(limit, 10));
+  }
+
   @Get(':code')
   async getStockByCode(
     @Param('code') code: string,

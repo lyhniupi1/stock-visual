@@ -96,14 +96,31 @@ export async function fetchAllStocks(): Promise<StockData[]> {
 }
 
 /**
+ * 创建带超时的fetch请求
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 5000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
  * 获取股票代码列表
  */
 export async function fetchStockCodes(): Promise<{ code: string; codeName: string }[]> {
   try {
-    const response = await fetch(getApiUrl('/stocks/codes'), {
-      // 添加超时和更宽松的错误处理
-      signal: AbortSignal.timeout?.(5000) || undefined,
-    });
+    const response = await fetchWithTimeout(getApiUrl('/stocks/codes'), {}, 5000);
     if (!response.ok) {
       // 不抛出错误，而是返回空数组
       console.warn(`Failed to fetch stock codes: HTTP ${response.status}`);
@@ -112,6 +129,36 @@ export async function fetchStockCodes(): Promise<{ code: string; codeName: strin
     return await response.json();
   } catch (error) {
     // 静默处理错误，不打印到控制台
+    return [];
+  }
+}
+
+/**
+ * 搜索股票（模糊匹配代码或名称）
+ */
+export async function searchStocks(
+  query: string,
+  limit: number = 20
+): Promise<{ code: string; codeName: string }[]> {
+  try {
+    if (!query.trim()) {
+      return [];
+    }
+    
+    const response = await fetchWithTimeout(
+      getApiUrl(`/stocks/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+      {},
+      5000
+    );
+    
+    if (!response.ok) {
+      console.warn(`Failed to search stocks: HTTP ${response.status}`);
+      return [];
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching stocks:', error);
     return [];
   }
 }
