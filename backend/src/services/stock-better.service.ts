@@ -336,48 +336,59 @@ export class StockBetterService {
       result.set(code, { t1: null, t2: null });
     }
 
-    // 查询所有股票在日期范围内的数据
     const placeholders = codes.map(() => '?').join(',');
-    const sql = `
-      SELECT * FROM stock_day_pepb_data 
-      WHERE date <= ? 
-        AND code IN (${placeholders})
-      ORDER BY code ASC, date DESC
+
+    // 查询1：获取每个股票 >= t1 的最早数据（limit 1）
+    const sqlT1 = `
+      WITH ranked_t1 AS (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY code ORDER BY date ASC) as rn
+        FROM stock_day_pepb_data
+        WHERE date >= ?
+          AND code IN (${placeholders})
+      )
+      SELECT * FROM ranked_t1 WHERE rn = 1
     `;
     
-    const params = [t2, ...codes];
-    const allData = await this.databaseService.query<StockDayPepbData>(sql, params);
+    // 查询2：获取每个股票 <= t2 的最新数据（limit 1）
+    const sqlT2 = `
+      WITH ranked_t2 AS (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY code ORDER BY date DESC) as rn
+        FROM stock_day_pepb_data
+        WHERE date <= ?
+          AND code IN (${placeholders})
+      )
+      SELECT * FROM ranked_t2 WHERE rn = 1
+    `;
+    
+    // 并行执行两个查询
+    const paramsT1 = [t1, ...codes];
+    const paramsT2 = [t2, ...codes];
+    
+    const [t1DataList, t2DataList] = await Promise.all([
+      this.databaseService.query<StockDayPepbData>(sqlT1, paramsT1),
+      this.databaseService.query<StockDayPepbData>(sqlT2, paramsT2),
+    ]);
 
-    // 按股票分组处理
-    const groupedByCode = new Map<string, StockDayPepbData[]>();
-    for (const data of allData) {
-      if (!groupedByCode.has(data.code)) {
-        groupedByCode.set(data.code, []);
-      }
-      groupedByCode.get(data.code)!.push(data);
+    // 将查询结果转换为Map以便快速查找
+    const t1DataMap = new Map<string, StockDayPepbData>();
+    const t2DataMap = new Map<string, StockDayPepbData>();
+    
+    for (const data of t1DataList) {
+      t1DataMap.set(data.code, data);
+    }
+    
+    for (const data of t2DataList) {
+      t2DataMap.set(data.code, data);
     }
 
-    // 为每个股票找到t1和t2最近的数据
+    // 组装结果
     for (const code of codes) {
-      const stockDataList = groupedByCode.get(code) || [];
-      
-      let t1Data: StockDayPepbData | null = null;
-      let t2Data: StockDayPepbData | null = null;
-
-      for (const data of stockDataList) {
-        // t2数据：找<=t2的最新数据
-        if (!t2Data && data.date <= t2) {
-          t2Data = data;
-        }
-        // t1数据：找<=t1的最新数据
-        if (!t1Data && data.date <= t1) {
-          t1Data = data;
-        }
-        // 都找到了就退出
-        if (t1Data && t2Data) break;
-      }
-
-      result.set(code, { t1: t1Data, t2: t2Data });
+      result.set(code, {
+        t1: t1DataMap.get(code) || null,
+        t2: t2DataMap.get(code) || null,
+      });
     }
 
     return result;
