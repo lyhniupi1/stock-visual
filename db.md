@@ -1,11 +1,11 @@
 # SQLite 数据库元数据报告
-生成时间: 2026-02-22 13:41:36
+生成时间: 2026-02-22 14:01:10
 
 ## 数据库基本信息
 - SQLite 版本: 3.37.2
 - 页面大小: 1024 字节
-- 页面数量: 848700
-- 总大小: 869,068,800 字节
+- 页面数量: 848711
+- 总大小: 869,080,064 字节
 - 编码: UTF-8
 
 ## 数据表
@@ -299,9 +299,10 @@ CREATE TABLE stock_industry_data (
 
 ```sql
 CREATE TABLE stockinfo (
-    code TEXT NOT NULL PRIMARY KEY,
+    code TEXT NOT NULL,
     codeName TEXT,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (code, codeName)
 )
 ```
 
@@ -309,14 +310,14 @@ CREATE TABLE stockinfo (
 | 列名 | 类型 | 是否可为空 | 默认值 | 主键 |
 |------|------|------------|--------|------|
 | code | TEXT | 否 | NULL | 是 |
-| codeName | TEXT | 是 | NULL | 否 |
+| codeName | TEXT | 是 | NULL | 是 |
 | update_time | TIMESTAMP | 是 | CURRENT_TIMESTAMP | 否 |
 
 #### 索引
-- **idx_stockinfo_code_codename** (非唯一)
-  列: code, codeName
+- **idx_stockinfo_codename_code** (非唯一)
+  列: codeName, code
 - **sqlite_autoindex_stockinfo_1** (唯一)
-  列: code
+  列: code, codeName
 
 ---
 
@@ -379,7 +380,7 @@ CREATE INDEX idx_stock_day_pepb_data_date
         ON stock_day_pepb_data(date)
 ```
 
-### 索引: `idx_stockinfo_code_codename`
+### 索引: `idx_stockinfo_codename_code`
 ```sql
-CREATE INDEX idx_stockinfo_code_codename ON stockinfo (code, codeName)
+CREATE INDEX idx_stockinfo_codename_code ON stockinfo (codeName, code)
 ```

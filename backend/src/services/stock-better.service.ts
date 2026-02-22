@@ -90,12 +90,21 @@ export class StockBetterService {
     // 优化查询：使用UNION分别搜索代码和名称，避免OR条件导致索引失效
     const sql = `
       SELECT DISTINCT code, codeName
-      FROM stock_day_pepb_data
-      WHERE codeName LIKE ? AND codeName IS NOT NULL
+      FROM (
+        -- 搜索代码匹配
+        SELECT code, codeName
+        FROM stockinfo
+        WHERE code LIKE ?
+        UNION
+        -- 搜索名称匹配
+        SELECT code, codeName
+        FROM stockinfo
+        WHERE codeName LIKE ? AND codeName IS NOT NULL
+      )
       ORDER BY code
       LIMIT ?
     `;
-    const results = await this.databaseService.query<any>(sql, [searchTerm, limit]);
+    const results = await this.databaseService.query<any>(sql, [searchTerm, searchTerm, limit]);
     
     return results.map(row => ({
       code: row.code,
