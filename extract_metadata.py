@@ -227,7 +227,7 @@ def format_metadata_markdown(metadata):
     return "\n".join(md_lines)
 
 def main():
-    db_path = "data/stocks.db"
+    db_path = "data/magicFormulaData.db"
     output_path = "db.md"
     
     print(f"正在分析数据库: {db_path}")

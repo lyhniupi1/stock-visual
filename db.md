@@ -1,15 +1,15 @@
 # SQLite 数据库元数据报告
-生成时间: 2026-02-19 22:51:04
+生成时间: 2026-02-22 13:41:36
 
 ## 数据库基本信息
 - SQLite 版本: 3.37.2
 - 页面大小: 1024 字节
-- 页面数量: 1294581
-- 总大小: 1,325,650,944 字节
+- 页面数量: 848700
+- 总大小: 869,068,800 字节
 - 编码: UTF-8
 
 ## 数据表
-共 8 个表
+共 10 个表
 
 ### 表: `ROE_DATA`
 
@@ -142,10 +142,51 @@ CREATE TABLE "portfolios" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "nam
 
 ---
 
+### 表: `stock_a_all_pb`
+
+```sql
+CREATE TABLE stock_a_all_pb (
+    date TEXT NOT NULL PRIMARY KEY,  -- 日期作为主键
+    middlePB REAL,       -- 全部A股市净率中位数
+    equalWeightAveragePB REAL,  -- 全部A股市净率等权平均
+    close REAL,          -- 上证指数
+    quantileInAllHistoryMiddlePB REAL,  -- 当前市净率中位数在历史数据上的分位数
+    quantileInRecent10YearsMiddlePB REAL,  -- 当前市净率中位数在最近10年数据上的分位数
+    quantileInAllHistoryEqualWeightAveragePB REAL,  -- 当前市净率等权平均在历史数据上的分位数
+    quantileInRecent10YearsEqualWeightAveragePB REAL  -- 当前市净率等权平均在最近10年数据上的分位数
+)
+```
+
+#### 列结构
+| 列名 | 类型 | 是否可为空 | 默认值 | 主键 |
+|------|------|------------|--------|------|
+| date | TEXT | 否 | NULL | 是 |
+| middlePB | REAL | 是 | NULL | 否 |
+| equalWeightAveragePB | REAL | 是 | NULL | 否 |
+| close | REAL | 是 | NULL | 否 |
+| quantileInAllHistoryMiddlePB | REAL | 是 | NULL | 否 |
+| quantileInRecent10YearsMiddlePB | REAL | 是 | NULL | 否 |
+| quantileInAllHistoryEqualWeightAveragePB | REAL | 是 | NULL | 否 |
+| quantileInRecent10YearsEqualWeightAveragePB | REAL | 是 | NULL | 否 |
+
+#### 索引
+- **sqlite_autoindex_stock_a_all_pb_1** (唯一)
+  列: date
+
+---
+
 ### 表: `stock_bonus_data`
 
 ```sql
-CREATE TABLE "stock_bonus_data" ("code" text NOT NULL, "codeName" text, "dateStr" text NOT NULL, "bonusData" text, "amount" float, "stockDividend" float, PRIMARY KEY ("code", "dateStr"))
+CREATE TABLE stock_bonus_data (
+    code TEXT NOT NULL,
+    codeName TEXT,
+    dateStr TEXT NOT NULL,
+    bonusData TEXT,
+    amount REAL,
+    stockDividend REAL,
+    PRIMARY KEY (code, dateStr)
+)
 ```
 
 #### 列结构
@@ -155,8 +196,8 @@ CREATE TABLE "stock_bonus_data" ("code" text NOT NULL, "codeName" text, "dateStr
 | codeName | TEXT | 是 | NULL | 否 |
 | dateStr | TEXT | 否 | NULL | 是 |
 | bonusData | TEXT | 是 | NULL | 否 |
-| amount | float | 是 | NULL | 否 |
-| stockDividend | float | 是 | NULL | 否 |
+| amount | REAL | 是 | NULL | 否 |
+| stockDividend | REAL | 是 | NULL | 否 |
 
 #### 索引
 - **sqlite_autoindex_stock_bonus_data_1** (唯一)
@@ -167,7 +208,28 @@ CREATE TABLE "stock_bonus_data" ("code" text NOT NULL, "codeName" text, "dateStr
 ### 表: `stock_day_pepb_data`
 
 ```sql
-CREATE TABLE "stock_day_pepb_data" ("date" text NOT NULL, "code" text NOT NULL, "codeName" text, "open" float, "high" float, "low" float, "close" float, "preclose" float, "volume" integer, "amount" float, "adjustflag" integer, "turn" float, "tradestatus" integer, "pctChg" float, "peTTM" float, "pbMRQ" float, "psTTM" float, "pcfNcfTTM" float, "isST" integer, PRIMARY KEY ("date", "code"))
+CREATE TABLE stock_day_pepb_data (
+    date TEXT NOT NULL,
+    code TEXT NOT NULL,
+    codeName TEXT,
+    open REAL,
+    high REAL,
+    low REAL,
+    close REAL,
+    preclose REAL,
+    volume INTEGER,
+    amount REAL,
+    adjustflag INTEGER,
+    turn REAL,
+    tradestatus INTEGER,
+    pctChg REAL,
+    peTTM REAL,
+    pbMRQ REAL,
+    psTTM REAL,
+    pcfNcfTTM REAL,
+    isST INTEGER,
+    PRIMARY KEY (code, date)
+)
 ```
 
 #### 列结构
@@ -176,26 +238,32 @@ CREATE TABLE "stock_day_pepb_data" ("date" text NOT NULL, "code" text NOT NULL, 
 | date | TEXT | 否 | NULL | 是 |
 | code | TEXT | 否 | NULL | 是 |
 | codeName | TEXT | 是 | NULL | 否 |
-| open | float | 是 | NULL | 否 |
-| high | float | 是 | NULL | 否 |
-| low | float | 是 | NULL | 否 |
-| close | float | 是 | NULL | 否 |
-| preclose | float | 是 | NULL | 否 |
+| open | REAL | 是 | NULL | 否 |
+| high | REAL | 是 | NULL | 否 |
+| low | REAL | 是 | NULL | 否 |
+| close | REAL | 是 | NULL | 否 |
+| preclose | REAL | 是 | NULL | 否 |
 | volume | INTEGER | 是 | NULL | 否 |
-| amount | float | 是 | NULL | 否 |
+| amount | REAL | 是 | NULL | 否 |
 | adjustflag | INTEGER | 是 | NULL | 否 |
-| turn | float | 是 | NULL | 否 |
+| turn | REAL | 是 | NULL | 否 |
 | tradestatus | INTEGER | 是 | NULL | 否 |
-| pctChg | float | 是 | NULL | 否 |
-| peTTM | float | 是 | NULL | 否 |
-| pbMRQ | float | 是 | NULL | 否 |
-| psTTM | float | 是 | NULL | 否 |
-| pcfNcfTTM | float | 是 | NULL | 否 |
+| pctChg | REAL | 是 | NULL | 否 |
+| peTTM | REAL | 是 | NULL | 否 |
+| pbMRQ | REAL | 是 | NULL | 否 |
+| psTTM | REAL | 是 | NULL | 否 |
+| pcfNcfTTM | REAL | 是 | NULL | 否 |
 | isST | INTEGER | 是 | NULL | 否 |
 
 #### 索引
+- **idx_stock_day_pepb_data_date** (非唯一)
+  列: date
+- **idx_stock_day_pepb_data_codeName** (非唯一)
+  列: codeName
+- **idx_stock_day_pepb_data_code** (非唯一)
+  列: code
 - **sqlite_autoindex_stock_day_pepb_data_1** (唯一)
-  列: date, code
+  列: code, date
 
 ---
 
@@ -223,6 +291,31 @@ CREATE TABLE stock_industry_data (
 
 #### 索引
 - **sqlite_autoindex_stock_industry_data_1** (唯一)
+  列: code
+
+---
+
+### 表: `stockinfo`
+
+```sql
+CREATE TABLE stockinfo (
+    code TEXT NOT NULL PRIMARY KEY,
+    codeName TEXT,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+```
+
+#### 列结构
+| 列名 | 类型 | 是否可为空 | 默认值 | 主键 |
+|------|------|------------|--------|------|
+| code | TEXT | 否 | NULL | 是 |
+| codeName | TEXT | 是 | NULL | 否 |
+| update_time | TIMESTAMP | 是 | CURRENT_TIMESTAMP | 否 |
+
+#### 索引
+- **idx_stockinfo_code_codename** (非唯一)
+  列: code, codeName
+- **sqlite_autoindex_stockinfo_1** (唯一)
   列: code
 
 ---
@@ -264,3 +357,29 @@ CREATE TABLE zz500 (
   列: date
 
 ---
+
+## 独立索引
+共 4 个独立索引
+
+### 索引: `idx_stock_day_pepb_data_code`
+```sql
+CREATE INDEX idx_stock_day_pepb_data_code
+        ON stock_day_pepb_data(code)
+```
+
+### 索引: `idx_stock_day_pepb_data_codeName`
+```sql
+CREATE INDEX idx_stock_day_pepb_data_codeName
+        ON stock_day_pepb_data(codeName)
+```
+
+### 索引: `idx_stock_day_pepb_data_date`
+```sql
+CREATE INDEX idx_stock_day_pepb_data_date
+        ON stock_day_pepb_data(date)
+```
+
+### 索引: `idx_stockinfo_code_codename`
+```sql
+CREATE INDEX idx_stockinfo_code_codename ON stockinfo (code, codeName)
+```
