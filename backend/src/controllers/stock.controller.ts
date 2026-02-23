@@ -2,6 +2,7 @@ import { Controller, Get, Post, Query, Param, Body } from '@nestjs/common';
 import { StockBetterService } from '../services/stock-better.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
+import { IndexValuationData } from '../entities/index-valuation-data.entity';
 
 @Controller('api/stocks')
 export class StockController {
@@ -120,6 +121,27 @@ export class StockController {
       obj[key] = value;
     });
     return obj;
+  }
+
+  @Get('index/valuation')
+  async getIndexValuationData(
+    @Query('code') code?: string,
+    @Query('limit') limit?: string,
+  ): Promise<IndexValuationData[]> {
+    const limitNum = limit ? parseInt(limit, 10) : 0;
+    return this.stockService.getIndexValuationData(code, limitNum);
+  }
+
+  @Get('index/codes')
+  async getIndexCodes(): Promise<{ code: string; codeName: string }[]> {
+    return this.stockService.getIndexCodes();
+  }
+
+  @Get('index/date-range')
+  async getIndexValuationDateRange(
+    @Query('code') code?: string,
+  ): Promise<{ minDate: string; maxDate: string }> {
+    return this.stockService.getIndexValuationDateRange(code);
   }
 
   @Post('batch/compare')

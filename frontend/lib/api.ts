@@ -39,6 +39,15 @@ export interface SimplifiedStock {
   volume: string;
 }
 
+export interface IndexValuationData {
+  code: string;
+  date: string;
+  codeName: string;
+  pe: number;
+  pb: number;
+  roe: number;
+}
+
 /**
  * 获取完整的API URL
  * - 在客户端组件中：使用相对路径 /api，由Next.js代理处理
@@ -549,5 +558,70 @@ export async function fetchMultipleStocksByTwoDates(
   } catch (error) {
     console.error('Failed to fetch multiple stocks by two dates:', error);
     return {};
+  }
+}
+
+/**
+ * 获取指数估值数据
+ * @param code 指数代码（可选，不传则获取所有指数数据）
+ * @param limit 限制返回的数据条数（可选，0表示无限制）
+ */
+export async function fetchIndexValuationData(
+  code?: string,
+  limit: number = 0
+): Promise<IndexValuationData[]> {
+  try {
+    const params = new URLSearchParams();
+    if (code) params.append('code', code);
+    if (limit > 0) params.append('limit', limit.toString());
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetch(getApiUrl(`/stocks/index/valuation${queryString}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch index valuation data:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取所有指数代码
+ */
+export async function fetchIndexCodes(): Promise<{ code: string; codeName: string }[]> {
+  try {
+    const response = await fetch(getApiUrl('/stocks/index/codes'));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch index codes:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取指数估值数据的时间范围
+ * @param code 指数代码（可选）
+ */
+export async function fetchIndexValuationDateRange(
+  code?: string
+): Promise<{ minDate: string; maxDate: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (code) params.append('code', code);
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetch(getApiUrl(`/stocks/index/date-range${queryString}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch index valuation date range:', error);
+    return { minDate: '', maxDate: '' };
   }
 }

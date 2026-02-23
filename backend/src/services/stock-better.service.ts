@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
+import { IndexValuationData } from '../entities/index-valuation-data.entity';
 
 // 定义数据库查询返回的股票数据接口（与实体兼容）
 export interface StockDayPepbDataRecord extends StockDayPepbData {
@@ -468,6 +469,73 @@ export class StockBetterService {
     });
 
     transaction(data);
+  }
+
+  /**
+   * 获取指数估值数据
+   * @param code 指数代码（可选，不传则获取所有指数数据）
+   * @param limit 限制返回的数据条数（可选，0表示无限制）
+   */
+  async getIndexValuationData(code?: string, limit: number = 0): Promise<IndexValuationData[]> {
+    let sql = `
+      SELECT * FROM index_valuation_data
+    `;
+    const params: any[] = [];
+
+    if (code) {
+      sql += ` WHERE code = ? `;
+      params.push(code);
+    }
+
+    sql += ` ORDER BY date DESC `;
+
+    if (limit > 0) {
+      sql += ` LIMIT ? `;
+      params.push(limit);
+    }
+
+    return this.databaseService.query<IndexValuationData>(sql, params);
+  }
+
+  /**
+   * 获取所有指数代码
+   */
+  async getIndexCodes(): Promise<{ code: string; codeName: string }[]> {
+    const sql = `
+      SELECT DISTINCT code, codeName
+      FROM index_valuation_data
+      WHERE codeName IS NOT NULL
+      ORDER BY code
+    `;
+    const results = await this.databaseService.query<any>(sql);
+    
+    return results.map(row => ({
+      code: row.code,
+      codeName: row.codeName,
+    }));
+  }
+
+  /**
+   * 获取指数估值数据的时间范围
+   */
+  async getIndexValuationDateRange(code?: string): Promise<{ minDate: string; maxDate: string }> {
+    let sql = `
+      SELECT MIN(date) as minDate, MAX(date) as maxDate
+      FROM index_valuation_data
+    `;
+    const params: any[] = [];
+
+    if (code) {
+      sql += ` WHERE code = ? `;
+      params.push(code);
+    }
+
+    const result = await this.databaseService.queryOne<{ minDate: string; maxDate: string }>(sql, params);
+    
+    return {
+      minDate: result?.minDate || '',
+      maxDate: result?.maxDate || '',
+    };
   }
 
   /**
