@@ -29,6 +29,58 @@ const getStandardDeviation = (numbers: number[]): number => {
   return Math.sqrt(variance);
 };
 
+// 辅助函数：计算分位数（百分位）
+const getPercentile = (numbers: number[], value: number): number => {
+  if (numbers.length === 0) return 0;
+  // 过滤掉无效值
+  const validNumbers = numbers.filter(num => !isNaN(num));
+  if (validNumbers.length === 0) return 0;
+  // 计算小于value的元素数量（百分位排名）
+  const countLess = validNumbers.filter(num => num < value).length;
+  console.log(countLess, validNumbers.length)
+  // 计算分位数（百分比）
+  return (countLess / validNumbers.length) * 100;
+};
+
+// 子组件：显示最新值的分位数
+interface PercentileDisplayProps {
+  data: IndexValuationData[];
+  field: 'pe' | 'pb' | 'roe';
+  label?: string;
+}
+
+const PercentileDisplay = ({ data, field, label }: PercentileDisplayProps) => {
+  console.log(data)
+  if (data.length === 0) {
+    return <div className="text-sm text-gray-500">无数据</div>;
+  }
+
+  // 提取字段值
+  const values = data.map(item => item[field]).filter(val => val !== null && !isNaN(val)) as number[];
+  if (values.length === 0) {
+    return <div className="text-sm text-gray-500">无有效数据</div>;
+  }
+
+  const latestValue = data[0][field];
+  console.log(latestValue);
+  
+  if (latestValue === null || isNaN(latestValue)) {
+    return <div className="text-sm text-gray-500">最新值无效</div>;
+  }
+
+  const percentile = getPercentile(values, latestValue);
+  const displayLabel = label || (field === 'pe' ? 'PE' : field === 'pb' ? 'PB' : 'ROE');
+
+  // 确定值的显示格式
+  const valueSuffix = '';
+  return (
+    <div className="space-y-1">
+      <div>最新{displayLabel}: {latestValue.toFixed(2)}{valueSuffix}</div>
+      <div>历史分位数: {percentile.toFixed(1)}%</div>
+    </div>
+  );
+};
+
 const IndexValuationChart = () => {
   const peChartContainerRef = useRef<HTMLDivElement>(null);
   const pbChartContainerRef = useRef<HTMLDivElement>(null);
@@ -382,7 +434,7 @@ const IndexValuationChart = () => {
             </div>
             <div className="text-sm text-gray-600">
               {indexData.length > 0 && (
-                <div>最新PE: {indexData[indexData.length - 1].pe?.toFixed(2) || 'N/A'}</div>
+                <PercentileDisplay data={indexData} field="pe" label="PE" />
               )}
             </div>
           </div>
@@ -401,7 +453,7 @@ const IndexValuationChart = () => {
             </div>
             <div className="text-sm text-gray-600">
               {indexData.length > 0 && (
-                <div>最新PB: {indexData[indexData.length - 1].pb?.toFixed(2) || 'N/A'}</div>
+                <PercentileDisplay data={indexData} field="pb" label="PB" />
               )}
             </div>
           </div>
@@ -420,7 +472,7 @@ const IndexValuationChart = () => {
             </div>
             <div className="text-sm text-gray-600">
               {indexData.length > 0 && (
-                <div>最新ROE: {indexData[indexData.length - 1].roe?.toFixed(2) || 'N/A'}%</div>
+                <PercentileDisplay data={indexData} field="roe" label="ROE" />
               )}
             </div>
           </div>
@@ -431,93 +483,6 @@ const IndexValuationChart = () => {
         </div>
       </div>
 
-      {/* 数据统计 */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">数据统计 - {selectedIndexName}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h4 className="font-medium text-gray-700 mb-2">PE统计</h4>
-            <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-600">平均值:</span>
-                <span className="font-medium">{peAvg.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">中位数:</span>
-                <span className="font-medium">{getMedian(peValues).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">标准差:</span>
-                <span className="font-medium">{getStandardDeviation(peValues).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">最小值:</span>
-                <span className="font-medium">{peValues.length > 0 ? Math.min(...peValues).toFixed(2) : 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">最大值:</span>
-                <span className="font-medium">{peValues.length > 0 ? Math.max(...peValues).toFixed(2) : 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h4 className="font-medium text-gray-700 mb-2">PB统计</h4>
-            <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-600">平均值:</span>
-                <span className="font-medium">{pbAvg.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">中位数:</span>
-                <span className="font-medium">{getMedian(pbValues).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">标准差:</span>
-                <span className="font-medium">{getStandardDeviation(pbValues).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">最小值:</span>
-                <span className="font-medium">{pbValues.length > 0 ? Math.min(...pbValues).toFixed(2) : 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">最大值:</span>
-                <span className="font-medium">{pbValues.length > 0 ? Math.max(...pbValues).toFixed(2) : 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border border-gray-200">
-            <h4 className="font-medium text-gray-700 mb-2">ROE统计</h4>
-            <div className="space-y-1">
-              <div className="flex justify-between">
-                <span className="text-gray-600">平均值:</span>
-                <span className="font-medium">{roeAvg.toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">中位数:</span>
-                <span className="font-medium">{getMedian(roeValues).toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">标准差:</span>
-                <span className="font-medium">{getStandardDeviation(roeValues).toFixed(2)}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">最小值:</span>
-                <span className="font-medium">{roeValues.length > 0 ? Math.min(...roeValues).toFixed(2) : 'N/A'}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">最大值:</span>
-                <span className="font-medium">{roeValues.length > 0 ? Math.max(...roeValues).toFixed(2) : 'N/A'}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="mt-6 text-sm text-gray-600">
-          <p>注：以上统计数据基于当前选择的时间范围和数据点计算得出。</p>
-        </div>
-      </div>
     </div>
   );
 };
