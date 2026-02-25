@@ -9,25 +9,9 @@ interface ChartData {
   value: number;
 }
 
-// 辅助函数：计算中位数
-const getMedian = (numbers: number[]): number => {
-  if (numbers.length === 0) return 0;
-  const sorted = [...numbers].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[middle - 1] + sorted[middle]) / 2;
-  }
-  return sorted[middle];
-};
 
-// 辅助函数：计算标准差
-const getStandardDeviation = (numbers: number[]): number => {
-  if (numbers.length === 0) return 0;
-  const mean = numbers.reduce((sum, num) => sum + num, 0) / numbers.length;
-  const squaredDiffs = numbers.map(num => Math.pow(num - mean, 2));
-  const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / numbers.length;
-  return Math.sqrt(variance);
-};
+
+
 
 // 辅助函数：计算分位数（百分位）
 const getPercentile = (numbers: number[], value: number): number => {
@@ -95,7 +79,32 @@ const IndexValuationChart = () => {
   const [selectedIndex, setSelectedIndex] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'1Y' | '3Y' | '5Y' | '10Y' | 'ALL'>('3Y');
+  const [timeRange, setTimeRange] = useState<'1Y' | '3Y' | '5Y' | '10Y' | 'ALL'>('ALL');
+  const [limit, setLimit] = useState<number>(0);
+
+  // 根据时间范围计算 limit
+  const getLimitFromTimeRange = (range: '1Y' | '3Y' | '5Y' | '10Y' | 'ALL'): number => {
+    switch (range) {
+      case '1Y':
+        return 1 * 250;
+      case '3Y':
+        return 3 * 250;
+      case '5Y':
+        return 5 * 250;
+      case '10Y':
+        return 10 * 250;
+      case 'ALL':
+        return 0; // 0 表示获取所有数据
+      default:
+        return 0;
+    }
+  };
+
+  // 初始化limit值
+  useEffect(() => {
+    const initialLimit = getLimitFromTimeRange('3Y');
+    setLimit(initialLimit);
+  }, []);
 
   // 加载指数代码
   useEffect(() => {
@@ -120,7 +129,7 @@ const IndexValuationChart = () => {
       
       try {
         setLoading(true);
-        const data = await fetchIndexValuationData(selectedIndex, 0);
+        const data = await fetchIndexValuationData(selectedIndex, limit);
         setIndexData(data);
         setError(null);
       } catch (err) {
@@ -134,7 +143,7 @@ const IndexValuationChart = () => {
     };
 
     loadIndexData();
-  }, [selectedIndex]);
+  }, [selectedIndex, limit]);
 
   // 初始化图表
   useEffect(() => {
@@ -143,18 +152,18 @@ const IndexValuationChart = () => {
     }
 
     // 清理之前的图表
-    if (peChartRef.current) {
-      peChartRef.current.remove();
-      peChartRef.current = null;
-    }
-    if (pbChartRef.current) {
-      pbChartRef.current.remove();
-      pbChartRef.current = null;
-    }
-    if (roeChartRef.current) {
-      roeChartRef.current.remove();
-      roeChartRef.current = null;
-    }
+    // if (peChartRef.current) {
+    //   peChartRef.current.remove();
+    //   peChartRef.current = null;
+    // }
+    // if (pbChartRef.current) {
+    //   pbChartRef.current.remove();
+    //   pbChartRef.current = null;
+    // }
+    // if (roeChartRef.current) {
+    //   roeChartRef.current.remove();
+    //   roeChartRef.current = null;
+    // }
 
     // 准备数据
     const peData: ChartData[] = [];
@@ -305,8 +314,9 @@ const IndexValuationChart = () => {
   // 处理时间范围变化
   const handleTimeRangeChange = (range: '1Y' | '3Y' | '5Y' | '10Y' | 'ALL') => {
     setTimeRange(range);
-    // 这里可以根据时间范围过滤数据
-    // 目前先不实现过滤，因为API已经返回所有数据
+    const newLimit = getLimitFromTimeRange(range);
+    setLimit(newLimit);
+    // limit 变化会触发 useEffect 重新获取数据
   };
 
   // 生成模拟数据（用于开发测试）
