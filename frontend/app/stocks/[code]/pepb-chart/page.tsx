@@ -12,7 +12,6 @@ interface PEPBChartPageProps {
 export default async function PEPBChartPage({ params, searchParams }: PEPBChartPageProps) {
   const { code } = await params;
   const searchParamsObj = await searchParams;
-  const stockName = typeof searchParamsObj.name === 'string' ? searchParamsObj.name : '';
   
   // 获取股票代码列表用于导航
   let stockCodes: { code: string; codeName: string }[] = [];
@@ -29,15 +28,15 @@ export default async function PEPBChartPage({ params, searchParams }: PEPBChartP
 
   // 获取当前股票的完整名称
   const currentStock = stockCodes.find(stock => stock.code === code);
-  const displayName = stockName || currentStock?.codeName || code;
+  const displayName = currentStock?.codeName || code;
 
   return (
     <div className="space-y-8">
       {/* 导航栏 */}
       <div className="flex items-center justify-between">
         <div>
-          <Link 
-            href={`/stocks/${code}${stockName ? `?name=${encodeURIComponent(stockName)}` : ''}`}
+          <Link
+            href={`/stocks/${code}`}
             className="text-blue-600 hover:text-blue-800 flex items-center"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -57,7 +56,7 @@ export default async function PEPBChartPage({ params, searchParams }: PEPBChartP
         <div className="flex space-x-4">
           {prevStock && (
             <Link
-              href={`/stocks/${prevStock.code}/pepb-chart?name=${encodeURIComponent(prevStock.codeName)}`}
+              href={`/stocks/${prevStock.code}/pepb-chart`}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -68,7 +67,7 @@ export default async function PEPBChartPage({ params, searchParams }: PEPBChartP
           )}
           {nextStock && (
             <Link
-              href={`/stocks/${nextStock.code}/pepb-chart?name=${encodeURIComponent(nextStock.codeName)}`}
+              href={`/stocks/${nextStock.code}/pepb-chart`}
               className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center"
             >
               {nextStock.code}
@@ -135,7 +134,7 @@ export default async function PEPBChartPage({ params, searchParams }: PEPBChartP
       {/* 操作按钮 */}
       <div className="flex justify-center space-x-4">
         <Link
-          href={`/stocks/${code}${stockName ? `?name=${encodeURIComponent(stockName)}` : ''}`}
+          href={`/stocks/${code}`}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
         >
           返回股票详情页

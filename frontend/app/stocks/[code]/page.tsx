@@ -37,7 +37,7 @@ export default function StockDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const code = params?.code as string;
-  const stockName = searchParams?.get('name') || '';
+  const [stockName, setStockName] = useState('');
   
   const [historyData, setHistoryData] = useState<StockData[]>([]);
   const [stockCodes, setStockCodes] = useState<StockCode[]>([]);
@@ -58,6 +58,10 @@ export default function StockDetailPage() {
         ]);
         setHistoryData(history);
         setStockCodes(codes);
+        // 使用history数组中第一个元素的codeName作为stockName
+        if (history && history.length > 0 && history[0].codeName) {
+          setStockName(history[0].codeName);
+        }
       } catch (err) {
         console.error('Failed to fetch data:', err);
         setError('获取数据失败，请稍后重试');
@@ -66,6 +70,10 @@ export default function StockDetailPage() {
           const history = await fetchStockHistory(code, 1);
           setHistoryData(history);
           setStockCodes([]);
+          // 同样设置stockName
+          if (history && history.length > 0 && history[0].codeName) {
+            setStockName(history[0].codeName);
+          }
         } catch (fallbackErr) {
           console.error('Failed to fetch fallback data:', fallbackErr);
         }
@@ -135,7 +143,7 @@ export default function StockDetailPage() {
         <div className="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto justify-between sm:justify-normal">
           {prevStock && (
             <Link
-              href={`/stocks/${prevStock.code}?name=${encodeURIComponent(prevStock.codeName || prevStock.code)}`}
+              href={`/stocks/${prevStock.code}`}
               className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center text-xs sm:text-sm"
             >
               <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -148,7 +156,7 @@ export default function StockDetailPage() {
           
           {nextStock && (
             <Link
-              href={`/stocks/${nextStock.code}?name=${encodeURIComponent(nextStock.codeName || nextStock.code)}`}
+              href={`/stocks/${nextStock.code}`}
               className="px-2 sm:px-3 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center text-xs sm:text-sm"
             >
               <span className="hidden sm:inline">{nextStock.code}</span>
@@ -194,7 +202,7 @@ export default function StockDetailPage() {
           <div className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">市盈率</div>
           <div className="mt-3 sm:mt-4">
             <Link
-              href={`/stocks/${code}/pepb-chart${stockName ? `?name=${encodeURIComponent(stockName)}` : ''}`}
+              href={`/stocks/${code}/pepb-chart`}
               className="inline-flex items-center px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
             >
               <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -216,7 +224,7 @@ export default function StockDetailPage() {
           <div className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">市净率</div>
           <div className="mt-3 sm:mt-4">
             <Link
-              href={`/stocks/${code}/pepb-chart${stockName ? `?name=${encodeURIComponent(stockName)}` : ''}`}
+              href={`/stocks/${code}/pepb-chart`}
               className="inline-flex items-center px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors"
             >
               <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

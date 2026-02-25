@@ -67,7 +67,7 @@ export class StockBetterService {
   async getStockCodes(): Promise<{ code: string; codeName: string }[]> {
     const sql = `
       SELECT DISTINCT code, codeName 
-      FROM stock_day_pepb_data 
+      FROM stockinfo 
       WHERE codeName IS NOT NULL 
       ORDER BY code
     `;
