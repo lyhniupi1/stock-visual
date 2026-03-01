@@ -3,6 +3,7 @@ import { DatabaseService } from '../database.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
 import { IndexValuationData } from '../entities/index-valuation-data.entity';
+import { Hushen300 } from '../entities/hushen300.entity';
 
 // 定义数据库查询返回的股票数据接口（与实体兼容）
 export interface StockDayPepbDataRecord extends StockDayPepbData {
@@ -569,5 +570,50 @@ export class StockBetterService {
       lastUpdateDate,
       tableSize,
     };
+  }
+
+  /**
+   * 根据日期范围查询沪深300指数数据
+   */
+  async findHushen300ByDateRange(
+    startDate: string,
+    endDate: string,
+  ): Promise<Hushen300[]> {
+    const sql = `
+      SELECT * FROM hushen300
+      WHERE date >= ?
+        AND date <= ?
+      ORDER BY date ASC
+    `;
+    return this.databaseService.query<Hushen300>(sql, [startDate, endDate]);
+  }
+
+  /**
+   * 获取沪深300指数最新数据
+   */
+  async getLatestHushen300Data(): Promise<Hushen300 | null> {
+    const sql = `
+      SELECT * FROM hushen300
+      ORDER BY date DESC
+      LIMIT 1
+    `;
+    return this.databaseService.queryOne<Hushen300>(sql);
+  }
+
+  /**
+   * 获取沪深300指数历史数据（按日期降序）
+   */
+  async getHushen300History(limit: number = 365): Promise<Hushen300[]> {
+    const sql = `
+      SELECT * FROM hushen300
+      ORDER BY date DESC
+      LIMIT ?
+    `;
+    const recentData = await this.databaseService.query<Hushen300>(sql, [limit]);
+
+    // 按升序排序返回
+    return recentData.sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
   }
 }

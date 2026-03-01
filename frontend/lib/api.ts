@@ -48,6 +48,19 @@ export interface IndexValuationData {
   roe: number;
 }
 
+export interface Hushen300Data {
+  date: string;
+  code: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  preclose: number;
+  volume: number;
+  amount: number;
+  pctChg: number;
+}
+
 /**
  * 获取完整的API URL
  * - 在客户端组件中：使用相对路径 /api，由Next.js代理处理
@@ -623,5 +636,70 @@ export async function fetchIndexValuationDateRange(
   } catch (error) {
     console.error('Failed to fetch index valuation date range:', error);
     return { minDate: '', maxDate: '' };
+  }
+}
+
+// ==================== 沪深300指数 API ====================
+
+/**
+ * 获取沪深300指数数据（根据日期范围）
+ * @param startDate 开始日期 (YYYY-MM-DD)
+ * @param endDate 结束日期 (YYYY-MM-DD)
+ */
+export async function fetchHushen300ByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<Hushen300Data[]> {
+  try {
+    const params = new URLSearchParams();
+    params.append('start', startDate);
+    params.append('end', endDate);
+
+    const response = await fetch(getApiUrl(`/valuation/hushen300?${params.toString()}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch hushen300 data by date range:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取沪深300指数最新数据
+ */
+export async function fetchLatestHushen300Data(): Promise<Hushen300Data | null> {
+  try {
+    const response = await fetch(getApiUrl('/valuation/hushen300/latest'));
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch latest hushen300 data:', error);
+    return null;
+  }
+}
+
+/**
+ * 获取沪深300指数历史数据
+ * @param limit 限制返回的数据条数（默认365条）
+ */
+export async function fetchHushen300History(
+  limit: number = 365
+): Promise<Hushen300Data[]> {
+  try {
+    const response = await fetch(getApiUrl(`/valuation/hushen300/history?limit=${limit}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch hushen300 history:', error);
+    return [];
   }
 }

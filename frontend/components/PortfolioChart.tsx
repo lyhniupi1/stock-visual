@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { fetchMultipleStocksByDateRange, StockData } from '@/lib/api';
+import { fetchMultipleStocksByDateRange, StockData, fetchHushen300ByDateRange, Hushen300Data } from '@/lib/api';
 
 interface PortfolioChartProps {
   stockCodes: string[];
@@ -28,6 +28,8 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
   const [medianPEData, setMedianPEData] = useState<ChartDataPoint[]>([]);
   const [medianPBData, setMedianPBData] = useState<ChartDataPoint[]>([]);
   const [stocksRawData, setStocksRawData] = useState<Record<string, StockData[]>>({});
+  const [hushen300Data, setHushen300Data] = useState<Hushen300Data[]>([]);
+  const [hushen300NetValue, setHushen300NetValue] = useState<ChartDataPoint[]>([]);
 
   // 获取数据并计算等权重净值
   useEffect(() => {
@@ -37,15 +39,23 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
       setLoading(true);
       setError(null);
       try {
-        // 获取所有股票在日期范围内的数据
-        const stocksData = await fetchMultipleStocksByDateRange(stockCodes, startDate, endDate);
-        
+        // 并行获取股票数据和沪深300数据
+        const [stocksData, hushen300DataResult] = await Promise.all([
+          fetchMultipleStocksByDateRange(stockCodes, startDate, endDate),
+          fetchHushen300ByDateRange(startDate, endDate)
+        ]);
+
         // 存储原始数据
         setStocksRawData(stocksData);
-        
+        setHushen300Data(hushen300DataResult);
+
         // 计算等权重净值
         const netValueData = calculateEqualWeightNetValue(stocksData);
         setChartData(netValueData);
+
+        // 计算沪深300的净值变化，首日设置为1
+        const hushen300NetValueData = calculateHushen300NetValue(hushen300DataResult);
+        setHushen300NetValue(hushen300NetValueData);
 
         // 计算PE和PB中位数
         const { medianPE, medianPB } = calculateMedianPEAndPB(stocksData);
@@ -131,6 +141,24 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
     }));
 
     return portfolioNetValues;
+  };
+
+  // 计算沪深300净值变化（首日设置为1）
+  const calculateHushen300NetValue = (hushen300Data: Hushen300Data[]): ChartDataPoint[] => {
+    if (hushen300Data.length === 0) return [];
+
+    // 按日期排序
+    const sortedData = hushen300Data.slice().sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    // 以第一天的收盘价作为基准
+    const basePrice = sortedData[0].close;
+
+    return sortedData.map(data => ({
+      time: data.date,
+      value: basePrice > 0 ? data.close / basePrice : 1,
+    }));
   };
 
   // 计算PE和PB中位数
@@ -290,6 +318,24 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
       }));
       baselineSeries.setData(baselineData);
 
+      // 添加沪深300净值线（如果存在数据）
+      if (hushen300NetValue.length > 0) {
+        const hushen300Series = chart.addSeries(lwc.LineSeries, {
+          color: '#f97316', // 橙色
+          lineWidth: 2,
+          lineStyle: lwc.LineStyle.Solid,
+          title: '沪深300净值',
+          lastValueVisible: true,
+          priceLineVisible: false,
+        });
+
+        const hushen300FormattedData = hushen300NetValue.map(d => ({
+          time: (new Date(d.time).getTime() / 1000) as any,
+          value: d.value,
+        }));
+        hushen300Series.setData(hushen300FormattedData);
+      }
+
       // 适应内容
       chart.timeScale().fitContent();
     };
@@ -318,7 +364,7 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
         chartRef.current = null;
       }
     };
-  }, [chartData, medianPEData, medianPBData]);
+  }, [chartData, medianPEData, medianPBData, hushen300NetValue]);
 
   // 初始化PE中位数图表
   useEffect(() => {
@@ -655,6 +701,12 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-purple-500"></div>
             <span>PB中位数</span>
+          </div>
+        )}
+        {hushen300NetValue.length > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-0.5 bg-orange-500"></div>
+            <span>沪深300净值</span>
           </div>
         )}
       </div>
