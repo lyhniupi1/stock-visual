@@ -33,15 +33,6 @@ export default function PortfolioDetailPage() {
   const [stockDetails, setStockDetails] = useState<StockDetail[]>([]);
   const [fetchingData, setFetchingData] = useState(false);
 
-  // 设置默认日期
-  useEffect(() => {
-    const today = new Date();
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setFullYear(today.getFullYear() - 1);
-    
-    setT2(today.toISOString().split('T')[0]);
-    setT1(oneYearAgo.toISOString().split('T')[0]);
-  }, []);
 
   // 获取组合详情
   useEffect(() => {
@@ -49,6 +40,20 @@ export default function PortfolioDetailPage() {
       try {
         const data = await getPortfolioById(parseInt(id));
         setPortfolio(data);
+
+        // 设置默认日期：起始时间为组合创建时间，结束时间为一年后
+        if (data.createdAt) {
+          // 提取日期部分（YYYY-MM-DD）
+          const dateStr = data.createdAt.split('T')[0];
+          const createdAt = new Date(dateStr);
+          const oneYearLater = new Date(createdAt);
+          oneYearLater.setFullYear(createdAt.getFullYear() + 1);
+
+          // 格式化为 YYYY-MM-DD
+          const formatDate = (date: Date) => date.toISOString().split('T')[0];
+          setT1(formatDate(createdAt));
+          setT2(formatDate(oneYearLater));
+        }
       } catch (error) {
         console.error('Failed to fetch portfolio:', error);
       } finally {
