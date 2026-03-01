@@ -540,7 +540,7 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
     };
   }, [medianPBData]);
 
-  // 计算统计数据
+  // 计算统计数据（包含组合和沪深300）
   const getStats = () => {
     if (chartData.length < 2) return null;
 
@@ -566,19 +566,56 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
     const end = new Date(endDate);
     const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
     const years = days / 365;
-    const annualizedReturn = years > 0 
+    const annualizedReturn = years > 0
       ? ((Math.pow(endValue / startValue, 1 / years) - 1) * 100)
       : 0;
 
+    // 计算沪深300统计数据
+    let hushen300Stats = null;
+    if (hushen300NetValue.length >= 2) {
+      const hsStartValue = hushen300NetValue[0].value;
+      const hsEndValue = hushen300NetValue[hushen300NetValue.length - 1].value;
+      const hsTotalReturn = ((hsEndValue - hsStartValue) / hsStartValue) * 100;
+
+      // 计算最大回撤
+      let hsMaxDrawdown = 0;
+      let hsPeak = hushen300NetValue[0].value;
+      for (const point of hushen300NetValue) {
+        if (point.value > hsPeak) {
+          hsPeak = point.value;
+        }
+        const drawdown = ((hsPeak - point.value) / hsPeak) * 100;
+        if (drawdown > hsMaxDrawdown) {
+          hsMaxDrawdown = drawdown;
+        }
+      }
+
+      // 计算年化收益率（使用相同的日期差）
+      const hsAnnualizedReturn = years > 0
+        ? ((Math.pow(hsEndValue / hsStartValue, 1 / years) - 1) * 100)
+        : 0;
+
+      hushen300Stats = {
+        totalReturn: hsTotalReturn,
+        maxDrawdown: hsMaxDrawdown,
+        annualizedReturn: hsAnnualizedReturn,
+        days,
+      };
+    }
+
     return {
-      totalReturn,
-      maxDrawdown,
-      annualizedReturn,
-      days,
+      portfolio: {
+        totalReturn,
+        maxDrawdown,
+        annualizedReturn,
+        days,
+      },
+      hushen300: hushen300Stats,
     };
   };
 
   const stats = getStats();
+
 
   if (loading) {
     return (
@@ -623,31 +660,64 @@ const PortfolioChart = ({ stockCodes, startDate, endDate }: PortfolioChartProps)
           </p>
         </div>
         {stats && (
-          <div className="flex gap-4 text-sm">
-            <div className="text-right">
-              <div className="text-gray-500">总收益率</div>
-              <div className={`font-semibold ${stats.totalReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {stats.totalReturn >= 0 ? '+' : ''}{stats.totalReturn.toFixed(2)}%
+          <div className="flex flex-col gap-4">
+            {/* 组合统计信息 */}
+            <div className="flex gap-4 text-sm">
+              <div className="text-right">
+                <div className="text-gray-500">组合总收益率</div>
+                <div className={`font-semibold ${stats.portfolio.totalReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {stats.portfolio.totalReturn >= 0 ? '+' : ''}{stats.portfolio.totalReturn.toFixed(2)}%
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-gray-500">组合最大回撤</div>
+                <div className="font-semibold text-orange-600">
+                  -{stats.portfolio.maxDrawdown.toFixed(2)}%
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-gray-500">组合年化收益</div>
+                <div className={`font-semibold ${stats.portfolio.annualizedReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {stats.portfolio.annualizedReturn >= 0 ? '+' : ''}{stats.portfolio.annualizedReturn.toFixed(2)}%
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-gray-500">持仓天数</div>
+                <div className="font-semibold text-blue-600">
+                  {stats.portfolio.days}天
+                </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-gray-500">最大回撤</div>
-              <div className="font-semibold text-orange-600">
-                -{stats.maxDrawdown.toFixed(2)}%
+
+            {/* 沪深300对比统计信息 */}
+            {stats.hushen300 && (
+              <div className="flex gap-4 text-sm border-t pt-3">
+                <div className="text-right">
+                  <div className="text-gray-500">沪深300总收益率</div>
+                  <div className={`font-semibold ${stats.hushen300.totalReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {stats.hushen300.totalReturn >= 0 ? '+' : ''}{stats.hushen300.totalReturn.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-gray-500">沪深300最大回撤</div>
+                  <div className="font-semibold text-orange-600">
+                    -{stats.hushen300.maxDrawdown.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-gray-500">沪深300年化收益</div>
+                  <div className={`font-semibold ${stats.hushen300.annualizedReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {stats.hushen300.annualizedReturn >= 0 ? '+' : ''}{stats.hushen300.annualizedReturn.toFixed(2)}%
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-gray-500">持仓天数</div>
+                  <div className="font-semibold text-blue-600">
+                    {stats.hushen300.days}天
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-gray-500">年化收益</div>
-              <div className={`font-semibold ${stats.annualizedReturn >= 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {stats.annualizedReturn >= 0 ? '+' : ''}{stats.annualizedReturn.toFixed(2)}%
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-gray-500">持仓天数</div>
-              <div className="font-semibold text-blue-600">
-                {stats.days}天
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
