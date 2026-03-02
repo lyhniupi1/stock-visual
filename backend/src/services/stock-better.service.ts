@@ -173,17 +173,27 @@ export class StockBetterService {
     const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
 
     // 计算每个股票的股息率排名
-    // 获取所有股票的分红汇总数据（2022年之后）
+    // 根据查询日期动态确定分红统计年份范围
+    const queryDate = new Date(date);
+    const queryYear = queryDate.getFullYear();
+    const queryMonth = queryDate.getMonth() + 1; // 月份从0开始，所以要+1
+    console.log(queryYear)
+    console.log(queryMonth)
+    // 判断日期在当年上半年还是下半年，确定统计年份范围
+    const isSecondHalfYear = queryMonth >= 5; // 7-12月为下半年
+    const dividendYearThreshold = isSecondHalfYear ? queryYear - 1 : queryYear - 2;
+
+    // 获取所有股票的分红汇总数据（根据动态年份阈值）
     const bonusSummarySql = `
       SELECT
         code,
         SUM(amount) as totalAmount,
         SUM(stockDividend) as totalStockDividend
       FROM stock_bonus_data
-      WHERE dateStr > '2024'
+      WHERE dateStr > ?
       GROUP BY code
     `;
-    const bonusSummaries = this.databaseService.query<any>(bonusSummarySql);
+    const bonusSummaries = this.databaseService.query<any>(bonusSummarySql, [dividendYearThreshold.toString()]);
 
     // 创建分红汇总映射
     const bonusMap = new Map<string, { totalAmount: number; totalStockDividend: number }>();
