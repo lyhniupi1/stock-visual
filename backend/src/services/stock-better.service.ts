@@ -8,6 +8,7 @@ import { Hushen300 } from '../entities/hushen300.entity';
 // 定义数据库查询返回的股票数据接口（与实体兼容）
 export interface StockDayPepbDataRecord extends StockDayPepbData {
   id?: number;
+  dividendYield?: number;
 }
 
 // 定义数据库查询返回的分红数据接口（与实体兼容）
@@ -135,7 +136,7 @@ export class StockBetterService {
     page: number = 1, 
     pageSize: number = 20
   ): Promise<{
-    data: StockDayPepbData[];
+    data: StockDayPepbDataRecord[];
     total: number;
     page: number;
     pageSize: number;
@@ -171,6 +172,54 @@ export class StockBetterService {
     // 计算PB排名（只对正数PB排序）
     const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
 
+    // 计算每个股票的股息率排名
+    // 获取所有股票的分红汇总数据（2022年之后）
+    const bonusSummarySql = `
+      SELECT
+        code,
+        SUM(amount) as totalAmount,
+        SUM(stockDividend) as totalStockDividend
+      FROM stock_bonus_data
+      WHERE dateStr > '2024'
+      GROUP BY code
+    `;
+    const bonusSummaries = this.databaseService.query<any>(bonusSummarySql);
+
+    // 创建分红汇总映射
+    const bonusMap = new Map<string, { totalAmount: number; totalStockDividend: number }>();
+    for (const summary of bonusSummaries) {
+      bonusMap.set(summary.code, {
+        totalAmount: summary.totalAmount || 0,
+        totalStockDividend: summary.totalStockDividend || 0,
+      });
+    }
+
+    // 计算股息率并添加到股票对象
+    const stocksWithDividendYield = allStocks.map(stock => {
+      const bonus = bonusMap.get(stock.code);
+      const closePrice = stock.close || 0;
+      let dividendYield = 0;
+
+      if (bonus && closePrice > 0) {
+        // 股息率 = 每股分红金额 / 股价 + 每股送股
+        dividendYield = (bonus.totalAmount / closePrice) + (bonus.totalStockDividend || 0);
+      }
+
+      return {
+        ...stock,
+        dividendYield,
+      };
+    });
+
+    // 对股息率进行排序（降序，股息率越高越好）
+    const dvSorted = [...stocksWithDividendYield].sort((a, b) => b.dividendYield - a.dividendYield);
+
+    // 创建股息率排名映射
+    const dvRankMap = new Map<string, number>();
+    dvSorted.forEach((stock, index) => {
+      dvRankMap.set(stock.code, index + 1);
+    });
+
     // 创建排名映射
     const peRankMap = new Map<string, number>();
     const pbRankMap = new Map<string, number>();
@@ -185,18 +234,21 @@ export class StockBetterService {
       pbRankMap.set(stock.code, index + 1);
     });
 
-    // 计算综合排名（PE排名 + PB排名）
-    const stocksWithRank = allStocks.map(stock => {
+    // 计算综合排名（PE排名 + PB排名 + 股息率排名）
+    const stocksWithRank = stocksWithDividendYield.map(stock => {
       // PE为负数的排名设为9999
       const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
       // PB为负数的排名设为9999
       const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
-      
+      // 股息率小于等于0的排名设为较差排名（dvSorted.length + 1）
+      const dvRank = (stock.dividendYield || 0) <= 0 ? (dvSorted.length + 1) : (dvRankMap.get(stock.code) || (dvSorted.length + 1));
+
       return {
         ...stock,
         peRank,
         pbRank,
-        totalRank: peRank + pbRank,
+        dvRank,
+        totalRank: peRank + pbRank + dvRank,
       };
     });
 
@@ -209,8 +261,8 @@ export class StockBetterService {
     const endIndex = startIndex + pageSize;
     const paginatedData = stocksWithRank.slice(startIndex, endIndex);
 
-    // 移除排名字段，返回原始数据结构
-    const data = paginatedData.map(({ peRank, pbRank, totalRank, ...stock }) => stock);
+    // 移除排名字段，返回原始数据结构（保留dividendYield字段）
+    const data = paginatedData.map(({ peRank, pbRank, dvRank, totalRank, ...stock }) => stock);
 
     return {
       data,

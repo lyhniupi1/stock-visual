@@ -27,6 +27,7 @@ export interface StockData {
   psTTM: number;
   pcfNcfTTM: number;
   isST: number;
+  dividendYield?: number;
 }
 
 export interface SimplifiedStock {
@@ -37,6 +38,7 @@ export interface SimplifiedStock {
   pe: number;
   pb: number;
   volume: string;
+  dividendYield: string;
 }
 
 export interface IndexValuationData {
@@ -263,7 +265,8 @@ export async function fetchSimplifiedStocks(
       change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
       pe: stock.peTTM || 0,
       pb: stock.pbMRQ || 0,
-      volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0'
+      volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0',
+      dividendYield: stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : '0.00%'
     }));
 
     return {
@@ -294,7 +297,8 @@ export async function fetchSimplifiedStocks(
       change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
       pe: stock.peTTM || 0,
       pb: stock.pbMRQ || 0,
-      volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0'
+      volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0',
+      dividendYield: stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : '0.00%'
     }));
 
     // 对于非日期查询，我们仍然支持分页（前端分页）
