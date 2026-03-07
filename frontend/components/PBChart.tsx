@@ -62,6 +62,26 @@ const PBChart = ({ stockCode, stockName = '', limit = 0 }: PBChartProps) => {
     return Math.round(percentile * 10) / 10; // 保留一位小数
   };
 
+  // 计算特定百分位的值
+  const calculatePercentileValue = (values: number[], percentile: number): number => {
+    if (values.length === 0) return 0;
+    
+    // 过滤掉无效值
+    const validValues = values.filter(v => !isNaN(v) && isFinite(v));
+    if (validValues.length === 0) return 0;
+    
+    // 排序
+    const sortedValues = [...validValues].sort((a, b) => a - b);
+    
+    // 计算百分位对应的索引
+    const index = Math.floor((percentile / 100) * (sortedValues.length - 1));
+    
+    // 确保索引在有效范围内
+    const safeIndex = Math.max(0, Math.min(index, sortedValues.length - 1));
+    
+    return sortedValues[safeIndex];
+  };
+
   useEffect(() => {
     const loadStockData = async () => {
       try {
@@ -161,13 +181,43 @@ const PBChart = ({ stockCode, stockName = '', limit = 0 }: PBChartProps) => {
 
       // 添加PB系列 - 使用线图
       const pbSeries = chart.addSeries(lwc.LineSeries, {
-        color: '#10b981',
+        color: '#3b82f6',
         lineWidth: 2,
         title: 'PB(MRQ)',
       });
 
       // 设置数据
       pbSeries.setData(pbData);
+
+      // 计算并添加百分位水平线
+      const pbValues = stockData.map(item => item.pbMRQ).filter(pb => pb && pb > 0);
+      if (pbValues.length > 0) {
+        // 定义要显示的百分位
+        const percentiles = [30, 50, 70, 90];
+        const colors = ['#10b981', '#f59e0b', '#ef4444', '#6d1352']; // 绿, 黄, 红, 紫
+        const lineStyles = [lwc.LineStyle.Solid, lwc.LineStyle.Dashed, lwc.LineStyle.Dotted, lwc.LineStyle.LargeDashed];
+        
+        percentiles.forEach((percentile, index) => {
+          const percentileValue = calculatePercentileValue(pbValues, percentile);
+          
+          // 创建水平线系列
+          const lineSeries = chart.addSeries(lwc.LineSeries, {
+            color: colors[index],
+            lineWidth: 2,
+            lineStyle: lineStyles[index],
+            title: `${percentile}%分位线`,
+            priceScaleId: 'right', // 使用右侧价格刻度
+          });
+          
+          // 创建水平线数据（整个时间范围都是同一个值）
+          const lineData = pbData.map(item => ({
+            time: item.time,
+            value: percentileValue,
+          }));
+          
+          lineSeries.setData(lineData);
+        });
+      }
 
       // 添加标题
       chart.applyOptions({
@@ -371,10 +421,26 @@ const PBChart = ({ stockCode, stockName = '', limit = 0 }: PBChartProps) => {
         )}
 
         {/* 图例说明 */}
-        <div className="mt-4 flex items-center space-x-6 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+          <div className="flex items-center">
+            <div className="w-4 h-0.5 bg-blue-500 mr-2"></div>
+            <span className="text-gray-700">PB(MRQ) - 市净率</span>
+          </div>
           <div className="flex items-center">
             <div className="w-4 h-0.5 bg-green-500 mr-2"></div>
-            <span className="text-gray-700">PB(MRQ) - 市净率</span>
+            <span className="text-gray-700">30%分位线</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-0.5 bg-yellow-500 mr-2 border-dashed border-b"></div>
+            <span className="text-gray-700">50%分位线</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-0.5 bg-red-500 mr-2 border-dotted border-b"></div>
+            <span className="text-gray-700">70%分位线</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-0.5 bg-purple-500 mr-2 border-dashed border-b-2"></div>
+            <span className="text-gray-700">90%分位线</span>
           </div>
         </div>
       </div>
