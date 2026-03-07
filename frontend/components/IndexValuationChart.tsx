@@ -26,6 +26,25 @@ const getPercentile = (numbers: number[], value: number): number => {
   return (countLess / validNumbers.length) * 100;
 };
 
+// 辅助函数：计算特定百分位的值
+const getPercentileValue = (numbers: number[], percentile: number): number => {
+  if (numbers.length === 0) return 0;
+  // 过滤掉无效值
+  const validNumbers = numbers.filter(num => !isNaN(num));
+  if (validNumbers.length === 0) return 0;
+  
+  // 排序
+  const sortedValues = [...validNumbers].sort((a, b) => a - b);
+  
+  // 计算百分位对应的索引
+  const index = Math.floor((percentile / 100) * (sortedValues.length - 1));
+  
+  // 确保索引在有效范围内
+  const safeIndex = Math.max(0, Math.min(index, sortedValues.length - 1));
+  
+  return sortedValues[safeIndex];
+};
+
 // 子组件：显示最新值的分位数
 interface PercentileDisplayProps {
   data: IndexValuationData[];
@@ -214,6 +233,36 @@ const IndexValuationChart = () => {
     });
     peSeries.setData(peData);
 
+    // 为PE图表添加百分位水平线
+    const peValues = indexData.filter((item: IndexValuationData) => item.pe !== null && !isNaN(item.pe)).map(item => item.pe as number);
+    if (peValues.length > 0) {
+      // 定义要显示的百分位
+      const percentiles = [30, 50, 70, 90];
+      const colors = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6']; // 绿, 黄, 红, 紫
+      const lineStyles = [lwc.LineStyle.Solid, lwc.LineStyle.Dashed, lwc.LineStyle.Dotted, lwc.LineStyle.LargeDashed];
+      
+      percentiles.forEach((percentile, index) => {
+        const percentileValue = getPercentileValue(peValues, percentile);
+        
+        // 创建水平线系列
+        const lineSeries = peChart.addSeries(lwc.LineSeries, {
+          color: colors[index],
+          lineWidth: 2,
+          lineStyle: lineStyles[index],
+          title: `${percentile}%分位线`,
+          priceScaleId: 'right',
+        });
+        
+        // 创建水平线数据（整个时间范围都是同一个值）
+        const lineData = peData.map(item => ({
+          time: item.time,
+          value: percentileValue,
+        }));
+        
+        lineSeries.setData(lineData);
+      });
+    }
+
     // 创建PB图表
     const pbChart = lwc.createChart(pbChartContainerRef.current, {
       width: pbChartContainerRef.current.clientWidth,
@@ -242,6 +291,36 @@ const IndexValuationChart = () => {
       title: 'PB',
     });
     pbSeries.setData(pbData);
+
+    // 为PB图表添加百分位水平线
+    const pbValues = indexData.filter((item: IndexValuationData) => item.pb !== null && !isNaN(item.pb)).map(item => item.pb as number);
+    if (pbValues.length > 0) {
+      // 定义要显示的百分位
+      const percentiles = [30, 50, 70, 90];
+      const colors = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6']; // 绿, 黄, 红, 紫
+      const lineStyles = [lwc.LineStyle.Solid, lwc.LineStyle.Dashed, lwc.LineStyle.Dotted, lwc.LineStyle.LargeDashed];
+      
+      percentiles.forEach((percentile, index) => {
+        const percentileValue = getPercentileValue(pbValues, percentile);
+        
+        // 创建水平线系列
+        const lineSeries = pbChart.addSeries(lwc.LineSeries, {
+          color: colors[index],
+          lineWidth: 2,
+          lineStyle: lineStyles[index],
+          title: `${percentile}%分位线`,
+          priceScaleId: 'right',
+        });
+        
+        // 创建水平线数据（整个时间范围都是同一个值）
+        const lineData = pbData.map(item => ({
+          time: item.time,
+          value: percentileValue,
+        }));
+        
+        lineSeries.setData(lineData);
+      });
+    }
 
     // 创建ROE图表
     const roeChart = lwc.createChart(roeChartContainerRef.current, {
@@ -452,6 +531,29 @@ const IndexValuationChart = () => {
           <div className="mt-4 text-sm text-gray-500">
             <p>市盈率(PE) = 股价 / 每股收益，反映了投资者为每单位盈利支付的价格。</p>
           </div>
+          {/* PE图例 */}
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-blue-500 mr-2"></div>
+              <span className="text-gray-700">PE趋势线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-green-500 mr-2"></div>
+              <span className="text-gray-700">30%分位线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-yellow-500 mr-2 border-dashed border-b"></div>
+              <span className="text-gray-700">50%分位线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-red-500 mr-2 border-dotted border-b"></div>
+              <span className="text-gray-700">70%分位线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-purple-500 mr-2 border-dashed border-b-2"></div>
+              <span className="text-gray-700">90%分位线</span>
+            </div>
+          </div>
         </div>
 
         {/* PB图表 */}
@@ -470,6 +572,29 @@ const IndexValuationChart = () => {
           <div ref={pbChartContainerRef} className="h-80" />
           <div className="mt-4 text-sm text-gray-500">
             <p>市净率(PB) = 股价 / 每股净资产，反映了股票价格相对于其账面价值的高低。</p>
+          </div>
+          {/* PB图例 */}
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-green-500 mr-2"></div>
+              <span className="text-gray-700">PB趋势线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-green-500 mr-2"></div>
+              <span className="text-gray-700">30%分位线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-yellow-500 mr-2 border-dashed border-b"></div>
+              <span className="text-gray-700">50%分位线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-red-500 mr-2 border-dotted border-b"></div>
+              <span className="text-gray-700">70%分位线</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-0.5 bg-purple-500 mr-2 border-dashed border-b-2"></div>
+              <span className="text-gray-700">90%分位线</span>
+            </div>
           </div>
         </div>
 
