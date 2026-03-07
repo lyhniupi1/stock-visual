@@ -17,7 +17,7 @@ const StockTable = () => {
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
     page: 1,
-    pageSize: 20,
+    pageSize: 100,
     totalPages: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,7 @@ const StockTable = () => {
     // 初始加载时使用今天的日期
     const today = getTodayDate();
     setSelectedDate(today);
-    loadStocks(today, 1, 20);
+    loadStocks(today, 1, 100);
   }, []);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,6 +179,7 @@ const StockTable = () => {
               <option value="20">20</option>
               <option value="50">50</option>
               <option value="100">100</option>
+              <option value="100">200</option>
             </select>
           </div>
           <div className="flex items-center space-x-2">
@@ -193,6 +194,7 @@ const StockTable = () => {
       <table className="min-w-full divide-y divide-gray-200">
         <thead>
           <tr className="bg-gray-50">
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股票排名</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股票代码</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股票名称</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最新价</th>
@@ -205,8 +207,11 @@ const StockTable = () => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {stocks.map((stock) => (
+          {stocks.map((stock, index) => (
             <tr key={stock.code} className="hover:bg-gray-50">
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className="font-mono font-bold text-blue-600">{(pagination.page - 1) * pagination.pageSize + index + 1}</span>
+              </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="font-mono font-bold text-blue-600">{stock.code}</span>
               </td>
