@@ -285,18 +285,22 @@ export class StockBetterService {
     }
 
     // 2. 查询date前三年的平均股息支付率，得到一个map2
-    // 计算前三年的起始日期
+    // 计算前三年的起始日期（date的前三年）
     const threeYearsAgo = new Date(queryDate);
     threeYearsAgo.setFullYear(queryYear - 3);
     const startDateStr = threeYearsAgo.toISOString().split('T')[0];
     
+    // 结束日期为查询日期（date）
+    const endDateStr = date;
+
+    
     const dividendRatioSql = `
       SELECT SECUCODE, avg(DIVIDEND_PAY_IMPLE) as avgDividendPayRatio
       FROM eastmoney_dividend_ratio
-      WHERE REPORT_DATE >= ?
+      WHERE REPORT_DATE >= ? and REPORT_DATE < ?
       GROUP BY SECUCODE
     `;
-    const dividendRatioResults = await this.databaseService.query<any>(dividendRatioSql, [startDateStr]);
+    const dividendRatioResults = await this.databaseService.query<any>(dividendRatioSql, [startDateStr, endDateStr]);
     
     // 创建股息支付率映射（key: 转换后的代码格式 "sh.600000"）
     const dividendRatioMap = new Map<string, number>();
@@ -381,7 +385,7 @@ export class StockBetterService {
         pbRank,
         dvRank,
         pdRank,
-        totalRank: peRank + pbRank + dvRank + pdRank,
+        totalRank: peRank + pbRank  + pdRank,
       };
     });
 
@@ -396,7 +400,6 @@ export class StockBetterService {
 
     // 移除排名字段，返回原始数据结构（保留dividendYield字段）
     const data = paginatedData.map(({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock);
-    console.log(data)
 
     return {
       data,
