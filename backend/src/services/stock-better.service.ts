@@ -9,6 +9,9 @@ import { Hushen300 } from '../entities/hushen300.entity';
 export interface StockDayPepbDataRecord extends StockDayPepbData {
   id?: number;
   dividendYield?: number;
+  eps?: number;
+  dividendPayRatio?: number;
+  predictDividendRatio?: number;
 }
 
 // 定义数据库查询返回的分红数据接口（与实体兼容）
@@ -19,6 +22,43 @@ export interface StockBonusDataRecord extends StockBonusData {
 @Injectable()
 export class StockBetterService {
   constructor(private databaseService: DatabaseService) {}
+
+  /**
+   * 将股票代码从 "sh.600000" 格式转换为 "600000.SH" 格式
+   * 用于匹配 eastmoney 表中的 SECUCODE 格式
+   */
+  private convertToEastmoneyCode(code: string): string {
+    if (!code) return '';
+    
+    // 格式: "sh.600000" 或 "sz.000001"
+    const parts = code.split('.');
+    if (parts.length === 2) {
+      const exchange = parts[0].toUpperCase(); // "SH" 或 "SZ"
+      const stockCode = parts[1]; // "600000"
+      return `${stockCode}.${exchange}`;
+    }
+    
+    // 如果已经是 "600000.SH" 格式，直接返回
+    return code;
+  }
+
+  /**
+   * 将股票代码从 "600000.SH" 格式转换回 "sh.600000" 格式
+   */
+  private convertFromEastmoneyCode(secucode: string): string {
+    if (!secucode) return '';
+    
+    // 格式: "600000.SH" 或 "000001.SZ"
+    const parts = secucode.split('.');
+    if (parts.length === 2) {
+      const stockCode = parts[0]; // "600000"
+      const exchange = parts[1].toLowerCase(); // "sh" 或 "sz"
+      return `${exchange}.${stockCode}`;
+    }
+    
+    // 如果已经是 "sh.600000" 格式，直接返回
+    return secucode;
+  }
 
   /**
    * 获取所有股票数据
@@ -221,14 +261,94 @@ export class StockBetterService {
       };
     });
 
+
+    // 1. 查询date当年所有股票的EPS，得到一个map
+    const epsQueryYear = queryYear.toString();
+    const epsSql = `
+      SELECT SECUCODE, EPS
+      FROM eastmoney_eps_predict
+      WHERE YEAR = ?
+    `;
+    const epsResults = await this.databaseService.query<any>(epsSql, [epsQueryYear]);
+
+    
+    
+    // 创建EPS映射（key: 转换后的代码格式 "sh.600000"）
+    const epsMap = new Map<string, number>();
+    for (const row of epsResults) {
+      const eastmoneyCode = row.SECUCODE;
+      const localCode = this.convertFromEastmoneyCode(eastmoneyCode);
+      const eps = parseFloat(row.EPS) || 0;
+      if (localCode && eps > 0) {
+        epsMap.set(localCode, eps);
+      }
+    }
+
+    // 2. 查询date前三年的平均股息支付率，得到一个map2
+    // 计算前三年的起始日期
+    const threeYearsAgo = new Date(queryDate);
+    threeYearsAgo.setFullYear(queryYear - 3);
+    const startDateStr = threeYearsAgo.toISOString().split('T')[0];
+    
+    const dividendRatioSql = `
+      SELECT SECUCODE, avg(DIVIDEND_PAY_IMPLE) as avgDividendPayRatio
+      FROM eastmoney_dividend_ratio
+      WHERE REPORT_DATE >= ?
+      GROUP BY SECUCODE
+    `;
+    const dividendRatioResults = await this.databaseService.query<any>(dividendRatioSql, [startDateStr]);
+    
+    // 创建股息支付率映射（key: 转换后的代码格式 "sh.600000"）
+    const dividendRatioMap = new Map<string, number>();
+    for (const row of dividendRatioResults) {
+      const eastmoneyCode = row.SECUCODE;
+      const localCode = this.convertFromEastmoneyCode(eastmoneyCode);
+      const avgDividendPayRatio = parseFloat(row.avgDividendPayRatio) || 0;
+      if (localCode && avgDividendPayRatio > 0) {
+        dividendRatioMap.set(localCode, avgDividendPayRatio);
+      }
+    }
+
+
+    // 3. 计算预测股息率并添加到股票对象
+    const stocksWithPredictDividend = stocksWithDividendYield.map(stock => {
+      const eps = epsMap.get(stock.code) || 0;
+      const dividendPayRatio = dividendRatioMap.get(stock.code) || 0;
+      const closePrice = stock.close || 0;
+      let predictDividendRatio = 0;
+
+      if (eps > 0 && dividendPayRatio > 0 && closePrice > 0) {
+        // predict_dividend_ratio = eps * 股息支付率 / price
+        // 注意：股息支付率是百分比，需要除以100
+        predictDividendRatio = (eps * (dividendPayRatio / 100)) / closePrice;
+      }
+
+      return {
+        ...stock,
+        eps,
+        dividendPayRatio,
+        predictDividendRatio,
+      };
+    });
+
     // 对股息率进行排序（降序，股息率越高越好）
-    const dvSorted = [...stocksWithDividendYield].sort((a, b) => b.dividendYield - a.dividendYield);
+    const dvSorted = [...stocksWithPredictDividend].sort((a, b) => b.dividendYield - a.dividendYield);
 
     // 创建股息率排名映射
     const dvRankMap = new Map<string, number>();
     dvSorted.forEach((stock, index) => {
       dvRankMap.set(stock.code, index + 1);
     });
+
+    // 创建针对 predictDividendRatio 的排名映射
+    // 对预测股息率进行排序（降序，预测股息率越高越好）
+    const pdSorted = [...stocksWithPredictDividend].sort((a, b) => b.predictDividendRatio - a.predictDividendRatio);
+    const pdRankMap = new Map<string, number>();
+    pdSorted.forEach((stock, index) => {
+      pdRankMap.set(stock.code, index + 1);
+    });
+
+
 
     // 创建排名映射
     const peRankMap = new Map<string, number>();
@@ -244,21 +364,24 @@ export class StockBetterService {
       pbRankMap.set(stock.code, index + 1);
     });
 
-    // 计算综合排名（PE排名 + PB排名 + 股息率排名）
-    const stocksWithRank = stocksWithDividendYield.map(stock => {
+    // 计算综合排名（PE排名 + PB排名 + 股息率排名 + 预测股息率排名）
+    const stocksWithRank = stocksWithPredictDividend.map(stock => {
       // PE为负数的排名设为9999
       const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
       // PB为负数的排名设为9999
       const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
       // 股息率小于等于0的排名设为较差排名（dvSorted.length + 1）
       const dvRank = (stock.dividendYield || 0) <= 0 ? (dvSorted.length + 1) : (dvRankMap.get(stock.code) || (dvSorted.length + 1));
+      // 预测股息率小于等于0的排名设为较差排名（pdSorted.length + 1）
+      const pdRank = (stock.predictDividendRatio || 0) <= 0 ? (pdSorted.length + 1) : (pdRankMap.get(stock.code) || (pdSorted.length + 1));
 
       return {
         ...stock,
         peRank,
         pbRank,
         dvRank,
-        totalRank: peRank + pbRank + dvRank,
+        pdRank,
+        totalRank: peRank + pbRank + dvRank + pdRank,
       };
     });
 
@@ -272,7 +395,8 @@ export class StockBetterService {
     const paginatedData = stocksWithRank.slice(startIndex, endIndex);
 
     // 移除排名字段，返回原始数据结构（保留dividendYield字段）
-    const data = paginatedData.map(({ peRank, pbRank, dvRank, totalRank, ...stock }) => stock);
+    const data = paginatedData.map(({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock);
+    console.log(data)
 
     return {
       data,

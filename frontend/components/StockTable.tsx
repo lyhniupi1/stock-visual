@@ -37,6 +37,7 @@ const StockTable = () => {
     try {
       setLoading(true);
       const result = await fetchSimplifiedStocks(date, page, pageSize);
+      console.log(result.data)
       setStocks(result.data);
       setPagination({
         total: result.total,
@@ -191,7 +192,8 @@ const StockTable = () => {
           </div>
         </div>
       </div>
-      <table className="min-w-full divide-y divide-gray-200">
+      <div className="overflow-x-auto shadow-md rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200">
         <thead>
           <tr className="bg-gray-50">
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股票排名</th>
@@ -201,7 +203,10 @@ const StockTable = () => {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">涨跌幅</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PE(TTM)</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PB(MRQ)</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股息率</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">历史股息率</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预测EPS</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股息支付率</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预测股息率</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">成交量</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
           </tr>
@@ -248,6 +253,21 @@ const StockTable = () => {
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`font-medium ${(stock.eps || 0) > 1 ? 'text-green-600' : (stock.eps || 0) > 0.5 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {stock.eps ? stock.eps.toFixed(3) : 'N/A'}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`font-medium ${(stock.dividendPayRatio || 0) > 50 ? 'text-green-600' : (stock.dividendPayRatio || 0) > 30 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {stock.dividendPayRatio ? `${stock.dividendPayRatio.toFixed(1)}%` : 'N/A'}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`font-medium ${(stock.predictDividendRatio || 0) > 0.05 ? 'text-green-600' : (stock.predictDividendRatio || 0) > 0.03 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  {stock.predictDividendRatio ? `${(stock.predictDividendRatio * 100).toFixed(2)}%` : 'N/A'}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
                 <span className="text-gray-900">{stock.volume}</span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
@@ -267,6 +287,7 @@ const StockTable = () => {
           ))}
         </tbody>
       </table>
+        </div>
       
       {/* 分页控件 */}
       {pagination.totalPages > 0 && (

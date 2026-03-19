@@ -28,6 +28,9 @@ export interface StockData {
   pcfNcfTTM: number;
   isST: number;
   dividendYield?: number;
+  eps?: number;
+  dividendPayRatio?: number;
+  predictDividendRatio?: number;
 }
 
 export interface SimplifiedStock {
@@ -39,6 +42,9 @@ export interface SimplifiedStock {
   pb: number;
   volume: string;
   dividendYield: string;
+  eps?: number;
+  dividendPayRatio?: number;
+  predictDividendRatio?: number;
 }
 
 export interface IndexValuationData {
@@ -266,7 +272,10 @@ export async function fetchSimplifiedStocks(
       pe: stock.peTTM || 0,
       pb: stock.pbMRQ || 0,
       volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0',
-      dividendYield: stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : '0.00%'
+      dividendYield: stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : '0.00%',
+      eps: stock.eps || 0,
+      dividendPayRatio: stock.dividendPayRatio || 0,
+      predictDividendRatio: stock.predictDividendRatio || 0
     }));
 
     return {
