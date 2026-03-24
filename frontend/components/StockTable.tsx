@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { fetchSimplifiedStocks, SimplifiedStock } from '@/lib/api';
 
 interface PaginationInfo {
@@ -12,7 +11,6 @@ interface PaginationInfo {
 }
 
 const StockTable = () => {
-  const router = useRouter();
   const [stocks, setStocks] = useState<SimplifiedStock[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
@@ -99,7 +97,8 @@ const StockTable = () => {
   };
 
   const handleViewStock = (code: string, name: string) => {
-    router.push(`/stocks/${code}?name=${encodeURIComponent(name)}`);
+    const url = `/stocks/${code}?name=${encodeURIComponent(name)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
