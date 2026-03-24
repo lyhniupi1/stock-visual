@@ -4,6 +4,7 @@ import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
 import { IndexValuationData } from '../entities/index-valuation-data.entity';
 import { Hushen300 } from '../entities/hushen300.entity';
+import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
 
 // 定义数据库查询返回的股票数据接口（与实体兼容）
 export interface StockDayPepbDataRecord extends StockDayPepbData {
@@ -804,5 +805,78 @@ export class StockBetterService {
     return recentData.sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
+  }
+
+  /**
+   * 获取股票的股息支付率历史数据
+   */
+  async getDividendRatioHistory(code: string): Promise<DividendRatioData[]> {
+    // 转换为eastmoney格式的代码
+    const eastmoneyCode = this.convertToEastmoneyCode(code);
+    
+    const sql = `
+      SELECT
+        SECUCODE as secucode,
+        SECURITY_NAME_ABBR as securityNameAbbr,
+        REPORT_DATE as reportDate,
+        CAST(PARENTNETPROFIT AS REAL) as parentNetProfit,
+        CAST(DIVIDEND_IMPLE AS REAL) as dividendImple,
+        CAST(DIVIDEND_PLAN AS REAL) as dividendPlan,
+        CAST(DIVIDEND_PAY_IMPLE AS REAL) as dividendPayImple,
+        CAST(DIVIDEND_PAY_PLAN AS REAL) as dividendPayPlan
+      FROM eastmoney_dividend_ratio
+      WHERE SECUCODE = ?
+      ORDER BY REPORT_DATE DESC
+    `;
+    
+    const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
+    
+    // 转换为前端需要的格式
+    return rawData.map(item => ({
+      code: this.convertFromEastmoneyCode(item.secucode),
+      date: item.reportDate,
+      codeName: item.securityNameAbbr || '',
+      dividendPayRatio: item.dividendPayImple,
+      dividendImple: item.dividendImple,
+      parentNetProfit: item.parentNetProfit
+    }));
+  }
+
+  /**
+   * 获取最新的股息支付率数据
+   */
+  async getLatestDividendRatio(code: string): Promise<DividendRatioData | null> {
+    // 转换为eastmoney格式的代码
+    const eastmoneyCode = this.convertToEastmoneyCode(code);
+    
+    const sql = `
+      SELECT
+        SECUCODE as secucode,
+        SECURITY_NAME_ABBR as securityNameAbbr,
+        REPORT_DATE as reportDate,
+        CAST(DIVIDEND_PAY_IMPLE AS REAL) as dividendPayImple,
+        CAST(DIVIDEND_IMPLE AS REAL) as dividendImple,
+        CAST(PARENTNETPROFIT AS REAL) as parentNetProfit
+      FROM eastmoney_dividend_ratio
+      WHERE SECUCODE = ?
+      ORDER BY REPORT_DATE DESC
+      LIMIT 1
+    `;
+    
+    const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
+    
+    if (rawData.length === 0) {
+      return null;
+    }
+    
+    const item = rawData[0];
+    return {
+      code: this.convertFromEastmoneyCode(item.secucode),
+      date: item.reportDate,
+      codeName: item.securityNameAbbr || '',
+      dividendPayRatio: item.dividendPayImple,
+      dividendImple: item.dividendImple,
+      parentNetProfit: item.parentNetProfit
+    };
   }
 }

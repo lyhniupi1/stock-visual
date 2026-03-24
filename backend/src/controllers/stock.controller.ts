@@ -3,6 +3,7 @@ import { StockBetterService } from '../services/stock-better.service';
 import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
 import { IndexValuationData } from '../entities/index-valuation-data.entity';
+import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
 
 @Controller('api/stocks')
 export class StockController {
@@ -159,5 +160,19 @@ export class StockController {
       obj[key] = value;
     });
     return obj;
+  }
+
+  @Get(':code/dividend-ratio')
+  async getDividendRatioHistory(
+    @Param('code') code: string,
+  ): Promise<DividendRatioData[]> {
+    return this.stockService.getDividendRatioHistory(code);
+  }
+
+  @Get(':code/dividend-ratio/latest')
+  async getLatestDividendRatio(
+    @Param('code') code: string,
+  ): Promise<DividendRatioData | null> {
+    return this.stockService.getLatestDividendRatio(code);
   }
 }

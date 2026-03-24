@@ -699,6 +699,57 @@ export async function fetchLatestHushen300Data(): Promise<Hushen300Data | null> 
 }
 
 /**
+ * 股息支付率数据接口
+ */
+export interface DividendRatioData {
+  code: string;
+  date: string;
+  codeName: string;
+  dividendPayRatio: number | null;
+  dividendImple: number | null;
+  parentNetProfit: number | null;
+}
+
+/**
+ * 获取股票的股息支付率历史数据
+ * @param code 股票代码
+ * @returns 股息支付率数据列表
+ */
+export async function fetchDividendRatioHistory(code: string): Promise<DividendRatioData[]> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/dividend-ratio`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch dividend ratio data:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取最新的股息支付率数据
+ * @param code 股票代码
+ * @returns 最新股息支付率数据或null
+ */
+export async function fetchLatestDividendRatio(code: string): Promise<DividendRatioData | null> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/dividend-ratio/latest`));
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch latest dividend ratio data:', error);
+    return null;
+  }
+}
+
+/**
  * 获取沪深300指数历史数据
  * @param limit 限制返回的数据条数（默认365条）
  */
