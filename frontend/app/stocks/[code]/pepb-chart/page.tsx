@@ -2,6 +2,7 @@ import PEChart from '@/components/PEChart';
 import PBChart from '@/components/PBChart';
 import StockBonus from '@/components/StockBonus';
 import DividendRatioChart from '@/components/DividendRatioChart';
+import EpsPredictChart from '@/components/EpsPredictChart';
 import { fetchStockCodes } from '@/lib/api';
 import Link from 'next/link';
 
@@ -112,6 +113,14 @@ export default async function PEPBChartPage({ params, searchParams }: PEPBChartP
       {/* 股息支付率 */}
       <div className="bg-white rounded-xl shadow-lg p-6">
         <DividendRatioChart
+          stockCode={code}
+          stockName={displayName}
+        />
+      </div>
+
+      {/* EPS 预测 */}
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <EpsPredictChart
           stockCode={code}
           stockName={displayName}
         />

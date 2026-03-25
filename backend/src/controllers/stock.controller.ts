@@ -175,4 +175,18 @@ export class StockController {
   ): Promise<DividendRatioData | null> {
     return this.stockService.getLatestDividendRatio(code);
   }
+
+  @Get(':code/eps-predict')
+  async getEpsPredictData(
+    @Param('code') code: string,
+  ): Promise<any[]> {
+    return this.stockService.getEpsPredictData(code);
+  }
+
+  @Get(':code/eps-predict/latest')
+  async getLatestEpsPredictData(
+    @Param('code') code: string,
+  ): Promise<any[]> {
+    return this.stockService.getLatestEpsPredictData(code);
+  }
 }

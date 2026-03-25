@@ -879,4 +879,122 @@ export class StockBetterService {
       parentNetProfit: item.parentNetProfit
     };
   }
+
+  /**
+   * 获取股票的 EPS 预测数据
+   */
+  async getEpsPredictData(code: string): Promise<any[]> {
+    // 转换为eastmoney格式的代码
+    const eastmoneyCode = this.convertToEastmoneyCode(code);
+    
+    const sql = `
+      SELECT
+        SECUCODE as secucode,
+        SECURITY_NAME_ABBR as securityNameAbbr,
+        ORG_NAME_ABBR as orgNameAbbr,
+        YEAR1 as year1,
+        YEAR_MARK1 as yearMark1,
+        CAST(EPS1 AS REAL) as eps1,
+        CAST(PE1 AS REAL) as pe1,
+        YEAR2 as year2,
+        YEAR_MARK2 as yearMark2,
+        CAST(EPS2 AS REAL) as eps2,
+        CAST(PE2 AS REAL) as pe2,
+        YEAR3 as year3,
+        YEAR_MARK3 as yearMark3,
+        CAST(EPS3 AS REAL) as eps3,
+        CAST(PE3 AS REAL) as pe3,
+        YEAR4 as year4,
+        YEAR_MARK4 as yearMark4,
+        CAST(EPS4 AS REAL) as eps4,
+        CAST(PE4 AS REAL) as pe4
+      FROM eastmoney_org_eps_predict
+      WHERE SECUCODE = ?
+      ORDER BY ORG_NAME_ABBR
+    `;
+    
+    const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
+    
+    // 转换为前端需要的格式
+    return rawData.map(item => ({
+      secucode: item.secucode,
+      securityNameAbbr: item.securityNameAbbr || '',
+      orgNameAbbr: item.orgNameAbbr || '',
+      year1: item.year1 || '',
+      yearMark1: item.yearMark1 || '',
+      eps1: item.eps1,
+      pe1: item.pe1,
+      year2: item.year2 || '',
+      yearMark2: item.yearMark2 || '',
+      eps2: item.eps2,
+      pe2: item.pe2,
+      year3: item.year3 || '',
+      yearMark3: item.yearMark3 || '',
+      eps3: item.eps3,
+      pe3: item.pe3,
+      year4: item.year4 || '',
+      yearMark4: item.yearMark4 || '',
+      eps4: item.eps4,
+      pe4: item.pe4
+    }));
+  }
+
+  /**
+   * 获取最新的 EPS 预测数据（按机构分组的最新预测）
+   */
+  async getLatestEpsPredictData(code: string): Promise<any[]> {
+    // 转换为eastmoney格式的代码
+    const eastmoneyCode = this.convertToEastmoneyCode(code);
+    
+    const sql = `
+      SELECT
+        SECUCODE as secucode,
+        SECURITY_NAME_ABBR as securityNameAbbr,
+        ORG_NAME_ABBR as orgNameAbbr,
+        YEAR1 as year1,
+        YEAR_MARK1 as yearMark1,
+        CAST(EPS1 AS REAL) as eps1,
+        CAST(PE1 AS REAL) as pe1,
+        YEAR2 as year2,
+        YEAR_MARK2 as yearMark2,
+        CAST(EPS2 AS REAL) as eps2,
+        CAST(PE2 AS REAL) as pe2,
+        YEAR3 as year3,
+        YEAR_MARK3 as yearMark3,
+        CAST(EPS3 AS REAL) as eps3,
+        CAST(PE3 AS REAL) as pe3,
+        YEAR4 as year4,
+        YEAR_MARK4 as yearMark4,
+        CAST(EPS4 AS REAL) as eps4,
+        CAST(PE4 AS REAL) as pe4
+      FROM eastmoney_org_eps_predict
+      WHERE SECUCODE = ?
+      ORDER BY ORG_NAME_ABBR
+    `;
+    
+    const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
+    
+    // 转换为前端需要的格式
+    return rawData.map(item => ({
+      secucode: item.secucode,
+      securityNameAbbr: item.securityNameAbbr || '',
+      orgNameAbbr: item.orgNameAbbr || '',
+      year1: item.year1 || '',
+      yearMark1: item.yearMark1 || '',
+      eps1: item.eps1,
+      pe1: item.pe1,
+      year2: item.year2 || '',
+      yearMark2: item.yearMark2 || '',
+      eps2: item.eps2,
+      pe2: item.pe2,
+      year3: item.year3 || '',
+      yearMark3: item.yearMark3 || '',
+      eps3: item.eps3,
+      pe3: item.pe3,
+      year4: item.year4 || '',
+      yearMark4: item.yearMark4 || '',
+      eps4: item.eps4,
+      pe4: item.pe4
+    }));
+  }
 }

@@ -352,10 +352,10 @@ const DividendRatioChart = ({ stockCode, stockName = '' }: DividendRatioChartPro
                   股息支付率
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  实际分红(亿元)
+                  实际分红(元)
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  归母净利润(亿元)
+                  归母净利润(元)
                 </th>
               </tr>
             </thead>

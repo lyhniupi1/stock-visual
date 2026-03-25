@@ -749,6 +749,69 @@ export async function fetchLatestDividendRatio(code: string): Promise<DividendRa
   }
 }
 
+// ==================== EPS 预测数据 API ====================
+
+/**
+ * EPS 预测数据接口
+ */
+export interface EpsPredictData {
+  secucode: string;
+  securityNameAbbr: string;
+  orgNameAbbr: string;
+  year1: string;
+  yearMark1: string;
+  eps1: number | null;
+  pe1: number | null;
+  year2: string;
+  yearMark2: string;
+  eps2: number | null;
+  pe2: number | null;
+  year3: string;
+  yearMark3: string;
+  eps3: number | null;
+  pe3: number | null;
+  year4: string;
+  yearMark4: string;
+  eps4: number | null;
+  pe4: number | null;
+}
+
+/**
+ * 获取股票的 EPS 预测数据
+ * @param code 股票代码
+ * @returns EPS 预测数据列表
+ */
+export async function fetchEpsPredictData(code: string): Promise<EpsPredictData[]> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/eps-predict`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch EPS predict data:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取最新的 EPS 预测数据（按机构分组的最新预测）
+ * @param code 股票代码
+ * @returns 最新 EPS 预测数据列表
+ */
+export async function fetchLatestEpsPredictData(code: string): Promise<EpsPredictData[]> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/eps-predict/latest`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch latest EPS predict data:', error);
+    return [];
+  }
+}
+
 /**
  * 获取沪深300指数历史数据
  * @param limit 限制返回的数据条数（默认365条）
