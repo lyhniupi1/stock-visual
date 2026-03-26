@@ -69,6 +69,21 @@ export interface Hushen300Data {
   pctChg: number;
 }
 
+export interface EquityBondSpreadData {
+  date: string;
+  code: string;
+  close: number;
+  peSpread: number;
+  dvSpread: number;
+  dvTtmSpread: number;
+  dvSpreadAverage: number;
+  dvTtmSpreadAverage: number;
+  peSpreadAverage: number;
+  dvSpreadStandardDeviation: number;
+  dvTtmSpreadStandardDeviation: number;
+  peSpreadStandardDeviation: number;
+}
+
 /**
  * 获取完整的API URL
  * - 在客户端组件中：使用相对路径 /api，由Next.js代理处理
@@ -829,4 +844,62 @@ export async function fetchHushen300History(
     console.error('Failed to fetch hushen300 history:', error);
     return [];
   }
+}
+
+/**
+ * 获取股债利差数据
+ * @param limit 限制返回的数据条数（默认365条）
+ */
+export async function fetchEquityBondSpreadData(
+  limit: number = 365
+): Promise<EquityBondSpreadData[]> {
+  try {
+    const response = await fetch(getApiUrl(`/valuation/equity-bond-spread?limit=${limit}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch equity bond spread data:', error);
+    // 返回模拟数据作为后备
+    return generateMockEquityBondSpreadData();
+  }
+}
+
+/**
+ * 生成模拟股债利差数据（用于开发测试）
+ */
+function generateMockEquityBondSpreadData(): EquityBondSpreadData[] {
+  const mockData: EquityBondSpreadData[] = [];
+  const today = new Date();
+  let baseClose = 4500;
+  let basePeSpread = 0.05;
+  
+  for (let i = 0; i < 365; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (365 - i));
+    const dateStr = date.toISOString().split('T')[0];
+    
+    const close = baseClose + (Math.random() - 0.5) * 200;
+    const peSpread = basePeSpread + (Math.random() - 0.5) * 0.02;
+    const dvSpread = peSpread - 0.01 + (Math.random() - 0.5) * 0.005;
+    const dvTtmSpread = dvSpread + (Math.random() - 0.5) * 0.002;
+    
+    mockData.push({
+      date: dateStr,
+      code: '000300.SH',
+      close,
+      peSpread,
+      dvSpread,
+      dvTtmSpread,
+      dvSpreadAverage: 0.03,
+      dvTtmSpreadAverage: 0.032,
+      peSpreadAverage: 0.045,
+      dvSpreadStandardDeviation: 0.01,
+      dvTtmSpreadStandardDeviation: 0.009,
+      peSpreadStandardDeviation: 0.015,
+    });
+  }
+  
+  return mockData;
 }

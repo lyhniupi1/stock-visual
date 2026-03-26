@@ -26,6 +26,7 @@ const Navbar = () => {
     { href: "/portfolios", label: "我的组合" },
     { href: "/charts", label: "K线图" },
     { href: "/valuation", label: "估值分析" },
+    { href: "/equity-bond-spread", label: "股债利差" },
     { href: "/about", label: "关于" },
   ];
 

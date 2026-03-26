@@ -37,4 +37,15 @@ export class ValuationController {
   ): Promise<Hushen300[]> {
     return this.stockService.getHushen300History(parseInt(limit, 10));
   }
+
+  /**
+   * 获取股债利差数据
+   * @param limit 限制返回的数据条数（默认365条，0表示获取所有数据）
+   */
+  @Get('equity-bond-spread')
+  async getEquityBondSpreadData(
+    @Query('limit') limit: string = '365',
+  ): Promise<any[]> {
+    return this.stockService.getEquityBondSpreadData(parseInt(limit, 10));
+  }
 }

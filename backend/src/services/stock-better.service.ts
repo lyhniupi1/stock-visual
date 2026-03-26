@@ -997,4 +997,50 @@ export class StockBetterService {
       pe4: item.pe4
     }));
   }
+
+  /**
+   * 获取股债利差数据
+   * @param limit 限制返回的数据条数（0表示获取所有数据）
+   */
+  async getEquityBondSpreadData(limit: number = 365): Promise<any[]> {
+    let sql = `
+      SELECT
+        date,
+        code,
+        close,
+        peSpread,
+        dvSpread,
+        dvTtmSpread,
+        dvSpreadAverage,
+        dvTtmSpreadAverage,
+        peSpreadAverage,
+        dvSpreadStandardDeviation,
+        dvTtmSpreadStandardDeviation,
+        peSpreadStandardDeviation
+      FROM equity_bond_spread
+      ORDER BY date DESC
+    `;
+    
+    if (limit > 0) {
+      sql += ` LIMIT ${limit}`;
+    }
+    
+    const rawData = await this.databaseService.query<any>(sql);
+    
+    // 转换为前端需要的格式
+    return rawData.map(item => ({
+      date: item.date,
+      code: item.code,
+      close: item.close,
+      peSpread: item.peSpread,
+      dvSpread: item.dvSpread,
+      dvTtmSpread: item.dvTtmSpread,
+      dvSpreadAverage: item.dvSpreadAverage,
+      dvTtmSpreadAverage: item.dvTtmSpreadAverage,
+      peSpreadAverage: item.peSpreadAverage,
+      dvSpreadStandardDeviation: item.dvSpreadStandardDeviation,
+      dvTtmSpreadStandardDeviation: item.dvTtmSpreadStandardDeviation,
+      peSpreadStandardDeviation: item.peSpreadStandardDeviation
+    }));
+  }
 }
