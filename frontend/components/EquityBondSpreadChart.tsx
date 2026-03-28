@@ -257,14 +257,14 @@ const EquityBondSpreadChart = () => {
       thresholds: [] as {level: string, threshold: string, position: string}[],
     };
 
-    // 定义阈值
+    // 定义阈值（仓位范围：20%-80%）
     const thresholds = [
-      { level: '极度低估', threshold: '>6.5%', position: '60-80%', color: 'bg-green-100 border-green-300' },
-      { level: '显著低估', threshold: '5.5%-6.5%', position: '40-60%', color: 'bg-blue-100 border-blue-300' },
-      { level: '适度低估', threshold: '4.5%-5.5%', position: '20-40%', color: 'bg-yellow-100 border-yellow-300' },
-      { level: '合理估值', threshold: '3.5%-4.5%', position: '持有观望', color: 'bg-gray-100 border-gray-300' },
-      { level: '适度高估', threshold: '2.5%-3.5%', position: '40-60%', color: 'bg-orange-100 border-orange-300' },
-      { level: '显著高估', threshold: '<2.5%', position: '20-40%', color: 'bg-red-100 border-red-300' },
+      { level: '极度低估', threshold: '>6.5%', position: '70-80%', color: 'bg-green-100 border-green-300' },
+      { level: '显著低估', threshold: '5.5%-6.5%', position: '50-70%', color: 'bg-blue-100 border-blue-300' },
+      { level: '适度低估', threshold: '4.5%-5.5%', position: '30-50%', color: 'bg-yellow-100 border-yellow-300' },
+      { level: '合理估值', threshold: '3.5%-4.5%', position: '20-30%', color: 'bg-gray-100 border-gray-300' },
+      { level: '适度高估', threshold: '2.5%-3.5%', position: '20-30%', color: 'bg-orange-100 border-orange-300' },
+      { level: '显著高估', threshold: '<2.5%', position: '20%以下', color: 'bg-red-100 border-red-300' },
     ];
 
     // 确定当前水平
@@ -272,7 +272,7 @@ const EquityBondSpreadChart = () => {
       recommendation = {
         level: '极度低估',
         description: '股票市场极度低估，投资价值极高',
-        suggestedPosition: '60-80%',
+        suggestedPosition: '70-80%',
         action: '重仓入场，分批建仓',
         color: 'bg-green-100 border-green-300',
         thresholds,
@@ -281,7 +281,7 @@ const EquityBondSpreadChart = () => {
       recommendation = {
         level: '显著低估',
         description: '股票市场显著低估，投资价值较高',
-        suggestedPosition: '40-60%',
+        suggestedPosition: '50-70%',
         action: '中度入场，分批建仓',
         color: 'bg-blue-100 border-blue-300',
         thresholds,
@@ -290,7 +290,7 @@ const EquityBondSpreadChart = () => {
       recommendation = {
         level: '适度低估',
         description: '股票市场适度低估，有一定投资价值',
-        suggestedPosition: '20-40%',
+        suggestedPosition: '30-50%',
         action: '轻仓入场，谨慎建仓',
         color: 'bg-yellow-100 border-yellow-300',
         thresholds,
@@ -299,7 +299,7 @@ const EquityBondSpreadChart = () => {
       recommendation = {
         level: '合理估值',
         description: '市场估值处于合理水平',
-        suggestedPosition: '持有观望',
+        suggestedPosition: '20-30%',
         action: '保持现有仓位，等待机会',
         color: 'bg-gray-100 border-gray-300',
         thresholds,
@@ -308,7 +308,7 @@ const EquityBondSpreadChart = () => {
       recommendation = {
         level: '适度高估',
         description: '股票市场适度高估，投资价值较低',
-        suggestedPosition: '40-60%',
+        suggestedPosition: '20-30%',
         action: '考虑减仓，锁定利润',
         color: 'bg-orange-100 border-orange-300',
         thresholds,
@@ -317,7 +317,7 @@ const EquityBondSpreadChart = () => {
       recommendation = {
         level: '显著高估',
         description: '股票市场显著高估，投资风险较高',
-        suggestedPosition: '20-40%',
+        suggestedPosition: '20%以下',
         action: '大幅减仓，防范风险',
         color: 'bg-red-100 border-red-300',
         thresholds,
