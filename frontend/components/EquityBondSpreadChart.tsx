@@ -220,6 +220,10 @@ const EquityBondSpreadChart = () => {
     const maxClose = Math.max(...closeValues);
     const minClose = Math.min(...closeValues);
 
+    // 计算历史分位
+    const sortedPeSpreadValues = [...peSpreadValues].sort((a, b) => a - b);
+    const percentile = (sortedPeSpreadValues.filter(v => v <= latestPeSpread).length / sortedPeSpreadValues.length) * 100;
+
     return {
       latestPeSpread,
       latestClose,
@@ -230,13 +234,100 @@ const EquityBondSpreadChart = () => {
       maxClose,
       minClose,
       dataCount: spreadData.length,
-      dateRange: spreadData.length > 0 ? 
-        `${formatDateForDisplay(spreadData[spreadData.length - 1].date)} 至 ${formatDateForDisplay(spreadData[0].date)}` : 
+      dateRange: spreadData.length > 0 ?
+        `${formatDateForDisplay(spreadData[spreadData.length - 1].date)} 至 ${formatDateForDisplay(spreadData[0].date)}` :
         '无数据',
+      percentile: Math.round(percentile * 10) / 10, // 保留一位小数
     };
   };
 
   const stats = calculateStats();
+
+  // 计算策略建议
+  const getStrategyRecommendation = () => {
+    if (!stats) return null;
+    
+    const currentSpread = stats.latestPeSpread * 100; // 转换为百分比
+    let recommendation = {
+      level: '',
+      description: '',
+      suggestedPosition: '',
+      action: '',
+      color: '',
+      thresholds: [] as {level: string, threshold: string, position: string}[],
+    };
+
+    // 定义阈值
+    const thresholds = [
+      { level: '极度低估', threshold: '>6.5%', position: '60-80%', color: 'bg-green-100 border-green-300' },
+      { level: '显著低估', threshold: '5.5%-6.5%', position: '40-60%', color: 'bg-blue-100 border-blue-300' },
+      { level: '适度低估', threshold: '4.5%-5.5%', position: '20-40%', color: 'bg-yellow-100 border-yellow-300' },
+      { level: '合理估值', threshold: '3.5%-4.5%', position: '持有观望', color: 'bg-gray-100 border-gray-300' },
+      { level: '适度高估', threshold: '2.5%-3.5%', position: '40-60%', color: 'bg-orange-100 border-orange-300' },
+      { level: '显著高估', threshold: '<2.5%', position: '20-40%', color: 'bg-red-100 border-red-300' },
+    ];
+
+    // 确定当前水平
+    if (currentSpread > 6.5) {
+      recommendation = {
+        level: '极度低估',
+        description: '股票市场极度低估，投资价值极高',
+        suggestedPosition: '60-80%',
+        action: '重仓入场，分批建仓',
+        color: 'bg-green-100 border-green-300',
+        thresholds,
+      };
+    } else if (currentSpread >= 5.5) {
+      recommendation = {
+        level: '显著低估',
+        description: '股票市场显著低估，投资价值较高',
+        suggestedPosition: '40-60%',
+        action: '中度入场，分批建仓',
+        color: 'bg-blue-100 border-blue-300',
+        thresholds,
+      };
+    } else if (currentSpread >= 4.5) {
+      recommendation = {
+        level: '适度低估',
+        description: '股票市场适度低估，有一定投资价值',
+        suggestedPosition: '20-40%',
+        action: '轻仓入场，谨慎建仓',
+        color: 'bg-yellow-100 border-yellow-300',
+        thresholds,
+      };
+    } else if (currentSpread >= 3.5) {
+      recommendation = {
+        level: '合理估值',
+        description: '市场估值处于合理水平',
+        suggestedPosition: '持有观望',
+        action: '保持现有仓位，等待机会',
+        color: 'bg-gray-100 border-gray-300',
+        thresholds,
+      };
+    } else if (currentSpread >= 2.5) {
+      recommendation = {
+        level: '适度高估',
+        description: '股票市场适度高估，投资价值较低',
+        suggestedPosition: '40-60%',
+        action: '考虑减仓，锁定利润',
+        color: 'bg-orange-100 border-orange-300',
+        thresholds,
+      };
+    } else {
+      recommendation = {
+        level: '显著高估',
+        description: '股票市场显著高估，投资风险较高',
+        suggestedPosition: '20-40%',
+        action: '大幅减仓，防范风险',
+        color: 'bg-red-100 border-red-300',
+        thresholds,
+      };
+    }
+
+    return recommendation;
+  };
+
+  const strategy = getStrategyRecommendation();
 
   if (loading) {
     return (
@@ -276,7 +367,7 @@ const EquityBondSpreadChart = () => {
 
       {/* 统计卡片 */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="text-sm text-gray-500">最新股债利差</div>
             <div className="text-2xl font-bold text-green-600 mt-1">
@@ -296,6 +387,15 @@ const EquityBondSpreadChart = () => {
             </div>
           </div>
           <div className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="text-sm text-gray-500">当前股债利差的历史分位</div>
+            <div className="text-2xl font-bold text-purple-600 mt-1">
+              {stats.percentile}%
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              高于{stats.percentile}%的历史数据
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-4 border border-gray-200">
             <div className="text-sm text-gray-500">数据范围</div>
             <div className="text-lg font-bold text-purple-600 mt-1">
               {stats.dataCount} 个交易日
@@ -311,6 +411,69 @@ const EquityBondSpreadChart = () => {
             </div>
             <div className="text-xs text-gray-500 mt-1">
               当前: {(stats.latestPeSpread * 100).toFixed(2)}%
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 策略建议卡片 */}
+      {strategy && (
+        <div className={`rounded-xl p-5 border-2 ${strategy.color}`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h3 className="text-xl font-bold text-gray-900">投资策略建议</h3>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  strategy.level.includes('低估') ? 'bg-green-100 text-green-800' :
+                  strategy.level.includes('高估') ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {strategy.level}
+                </span>
+              </div>
+              <p className="text-gray-700 mb-3">{strategy.description}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <div className="text-sm text-gray-500">建议仓位</div>
+                  <div className="text-lg font-bold text-blue-600">{strategy.suggestedPosition}</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <div className="text-sm text-gray-500">操作建议</div>
+                  <div className="text-lg font-bold text-green-600">{strategy.action}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="md:w-1/3">
+              <div className="bg-white rounded-lg p-4 border border-gray-300">
+                <h4 className="font-bold text-gray-800 mb-3">股债利差策略阈值</h4>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {strategy.thresholds.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`p-2 rounded text-sm ${
+                        strategy.level === item.level ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{item.level}</span>
+                        <span className="text-gray-600">{item.threshold}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">建议仓位: {item.position}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
+                  基于2005-2026年历史数据分析
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-gray-300">
+            <div className="text-sm text-gray-700">
+              <p className="mb-1"><span className="font-medium">当前股债利差</span>: {(stats!.latestPeSpread * 100).toFixed(2)}% | <span className="font-medium">历史分位</span>: {stats!.percentile}%</p>
+              <p className="text-gray-600">策略说明：股债利差越高，股票相对债券越有吸引力。建议在低估区域分批入场，高估区域分批出场。</p>
             </div>
           </div>
         </div>
