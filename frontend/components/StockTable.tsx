@@ -15,7 +15,7 @@ const StockTable = () => {
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
     page: 1,
-    pageSize: 100,
+    pageSize: 200,
     totalPages: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ const StockTable = () => {
     // 初始加载时使用今天的日期
     const today = getTodayDate();
     setSelectedDate(today);
-    loadStocks(today, 1, 100);
+    loadStocks(today, 1, 200);
   }, []);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,7 +179,7 @@ const StockTable = () => {
               <option value="20">20</option>
               <option value="50">50</option>
               <option value="100">100</option>
-              <option value="100">200</option>
+              <option value="200">200</option>
             </select>
           </div>
           <div className="flex items-center space-x-2">
