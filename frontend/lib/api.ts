@@ -84,6 +84,17 @@ export interface EquityBondSpreadData {
   peSpreadStandardDeviation: number;
 }
 
+export interface PortfolioBacktestStatInfo {
+  date: string;
+  stock_codes: string;
+  median_pe: number;
+  median_pb: number;
+  median_pe_pb: number;
+  median_dividend_yield: number;
+  median_roe: number;
+  adjust_action: string;
+}
+
 /**
  * 获取完整的API URL
  * - 在客户端组件中：使用相对路径 /api，由Next.js代理处理
@@ -902,4 +913,20 @@ function generateMockEquityBondSpreadData(): EquityBondSpreadData[] {
   }
   
   return mockData;
+}
+
+/**
+ * 获取组合回测统计信息（PE中位数、PB中位数、PE*PB中位数、分红率、ROE中位数）
+ */
+export async function fetchPortfolioBacktestStatInfo(): Promise<PortfolioBacktestStatInfo[]> {
+  try {
+    const response = await fetch(getApiUrl('/portfolio-backtest/stat-info'));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch portfolio backtest stat info:', error);
+    return [];
+  }
 }

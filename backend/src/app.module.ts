@@ -8,9 +8,11 @@ import { Portfolio } from './entities/portfolio.entity';
 import { StockController } from './controllers/stock.controller';
 import { PortfolioController } from './controllers/portfolio.controller';
 import { ValuationController } from './controllers/valuation.controller';
+import { PortfolioBacktestController } from './controllers/portfolio-backtest.controller';
 import { PortfolioService } from './services/portfolio.service';
 import { DatabaseService } from './database.service';
 import { StockBetterService } from './services/stock-better.service';
+import { PortfolioBacktestService } from './services/portfolio-backtest.service';
 
 @Module({
   imports: [
@@ -23,7 +25,7 @@ import { StockBetterService } from './services/stock-better.service';
     }),
     TypeOrmModule.forFeature([StockDayPepbData, StockBonusData, Portfolio]),
   ],
-  controllers: [AppController, StockController, PortfolioController, ValuationController],
-  providers: [AppService, PortfolioService, DatabaseService, StockBetterService],
+  controllers: [AppController, StockController, PortfolioController, ValuationController, PortfolioBacktestController],
+  providers: [AppService, PortfolioService, DatabaseService, StockBetterService, PortfolioBacktestService],
 })
 export class AppModule {}
