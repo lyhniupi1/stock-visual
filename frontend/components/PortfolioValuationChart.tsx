@@ -67,21 +67,84 @@ function getDisplayValue(item: PortfolioBacktestStatInfo, config: ChartConfig): 
   return getRawValue(item, config);
 }
 
+/** 详情弹窗组件 */
+const DetailModal = ({ item, onClose }: { item: PortfolioBacktestStatInfo; onClose: () => void }) => (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+    onClick={onClose}
+  >
+    <div
+      className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <h3 className="text-lg font-bold text-gray-800">
+          持仓详情 - {item.date}
+        </h3>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="p-4 space-y-4">
+        {/* 调仓信息 */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-500 mb-1.5">调仓信息</h4>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              {item.adjust_action || '无调仓操作'}
+            </p>
+          </div>
+        </div>
+        {/* 持仓股票 */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-500 mb-1.5">持仓股票</h4>
+          <div className="bg-gray-50 rounded-lg p-3">
+            {item.stock_codes ? (
+              <div className="flex flex-wrap gap-1.5">
+                {item.stock_codes.split(',').map((code) => (
+                  <span
+                    key={code.trim()}
+                    className="inline-block px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-mono"
+                  >
+                    {code.trim()}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">无持仓数据</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; config: ChartConfig }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [detailItem, setDetailItem] = useState<PortfolioBacktestStatInfo | null>(null);
+
+  // 构建 date -> PortfolioBacktestStatInfo 的映射，用于点击图表时查找详情
+  const dataMap = useMemo(() => {
+    const map = new Map<string, PortfolioBacktestStatInfo>();
+    data.forEach(item => {
+      map.set(item.date, item);
+    });
+    return map;
+  }, [data]);
 
   // 计算统计数据
   const stats = useMemo(() => {
-    // 去重并排序
     const sorted = [...data]
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .filter((item, index, arr) => index === 0 || item.date !== arr[index - 1].date);
 
     if (sorted.length === 0) return null;
 
-    // 原始数值列表（用于分位计算）
     const rawValues = sorted.map(item => getRawValue(item, config));
-    // 最新数据（最后一条）
     const latest = sorted[sorted.length - 1];
     const latestRaw = getRawValue(latest, config);
     const latestDisplay = getDisplayValue(latest, config);
@@ -157,7 +220,7 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
 
     series.setData(chartData);
 
-    // 添加工具提示
+    // 添加工具提示（只显示数值，不包含按钮）
     const toolTip = document.createElement('div');
     toolTip.style.cssText = `
       position: absolute;
@@ -198,6 +261,24 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
       toolTip.innerHTML = `<div style="font-weight:600;color:#374151;margin-bottom:2px">${dateStr}</div><div style="color:${config.color}">${config.title}: ${formattedValue}</div>`;
     });
 
+    // 点击图表时，根据鼠标位置找到对应的数据点，打开详情弹窗
+    const handleChartClick = (param: any) => {
+      if (!param.time || !param.seriesData || param.seriesData.size === 0) return;
+
+      const dataPoint = param.seriesData.get(series);
+      if (!dataPoint) return;
+
+      const dateStr = typeof param.time === 'string'
+        ? param.time
+        : new Date((param.time as number) * 1000).toISOString().split('T')[0];
+
+      const fullItem = dataMap.get(dateStr);
+      if (fullItem) {
+        setDetailItem(fullItem);
+      }
+    };
+    chart.subscribeClick(handleChartClick);
+
     // 窗口大小变化时自适应
     const handleResize = () => {
       if (chartContainerRef.current) {
@@ -210,7 +291,7 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [data, config]);
+  }, [data, config, dataMap]);
 
   // 判断分位高低
   const percentileLevel = stats
@@ -259,11 +340,17 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
       )}
 
       <div ref={chartContainerRef} className="w-full" />
+
+      {/* 详情弹窗 */}
+      {detailItem && (
+        <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+      )}
     </div>
   );
 };
 
 const RANGE_OPTIONS = [
+  { label: '全部', years: 0 },
   { label: '1年', years: 1 },
   { label: '3年', years: 3 },
   { label: '5年', years: 5 },
