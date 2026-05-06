@@ -263,10 +263,28 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
   );
 };
 
+const RANGE_OPTIONS = [
+  { label: '1年', years: 1 },
+  { label: '3年', years: 3 },
+  { label: '5年', years: 5 },
+  { label: '10年', years: 10 },
+  { label: '15年', years: 15 },
+  { label: '20年', years: 20 },
+] as const;
+
+/** 根据年份范围过滤数据 */
+function filterDataByYears(data: PortfolioBacktestStatInfo[], years: number): PortfolioBacktestStatInfo[] {
+  if (years <= 0) return data;
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear() - years, now.getMonth(), now.getDate());
+  return data.filter(item => new Date(item.date) >= cutoff);
+}
+
 const PortfolioValuationChart = () => {
   const [data, setData] = useState<PortfolioBacktestStatInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedYears, setSelectedYears] = useState(10);
 
   useEffect(() => {
     const loadData = async () => {
@@ -285,6 +303,9 @@ const PortfolioValuationChart = () => {
 
     loadData();
   }, []);
+
+  // 根据选中的年份范围过滤数据
+  const filteredData = useMemo(() => filterDataByYears(data, selectedYears), [data, selectedYears]);
 
   if (loading) {
     return (
@@ -313,8 +334,25 @@ const PortfolioValuationChart = () => {
 
   return (
     <div className="space-y-6">
+      {/* 时间范围选择按钮 */}
+      <div className="flex flex-wrap gap-2">
+        {RANGE_OPTIONS.map((option) => (
+          <button
+            key={option.years}
+            onClick={() => setSelectedYears(option.years)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              selectedYears === option.years
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       {chartConfigs.map((config) => (
-        <SingleChart key={config.dataKey} data={data} config={config} />
+        <SingleChart key={config.dataKey} data={filteredData} config={config} />
       ))}
     </div>
   );
