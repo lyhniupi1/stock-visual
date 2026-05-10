@@ -220,6 +220,30 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
 
     series.setData(chartData);
 
+    // 添加 10/30/50/70/90 分位线
+    const sortedValues = chartData.map(d => d.value as number).sort((a, b) => a - b);
+    if (sortedValues.length > 0) {
+      const percentileConfigs = [
+        { p: 10, label: 'P10', style: lwc.LineStyle.Dashed, width: 1, color: '#46dd46' },
+        { p: 30, label: 'P30', style: lwc.LineStyle.Dashed, width: 1, color: '#3669c0' },
+        { p: 50, label: 'P50', style: lwc.LineStyle.Solid, width: 2, color: '#9637b3' },
+        { p: 70, label: 'P70', style: lwc.LineStyle.Dashed, width: 1, color: '#a3216d' },
+        { p: 90, label: 'P90', style: lwc.LineStyle.Dashed, width: 1, color: '#c51852' },
+      ];
+      percentileConfigs.forEach(({ p, label, style, width, color }) => {
+        const idx = Math.floor((sortedValues.length - 1) * p / 100);
+        const price = sortedValues[idx];
+        series.createPriceLine({
+          price,
+          color,
+          lineWidth: width,
+          lineStyle: style,
+          axisLabelVisible: true,
+          title: `${label} `,
+        });
+      });
+    }
+
     // 添加工具提示（只显示数值，不包含按钮）
     const toolTip = document.createElement('div');
     toolTip.style.cssText = `
