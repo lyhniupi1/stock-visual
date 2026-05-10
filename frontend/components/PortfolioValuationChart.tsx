@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { fetchPortfolioBacktestStatInfo, PortfolioBacktestStatInfo } from '@/lib/api';
 import * as lwc from 'lightweight-charts';
 
@@ -104,14 +105,18 @@ const DetailModal = ({ item, onClose }: { item: PortfolioBacktestStatInfo; onClo
           <div className="bg-gray-50 rounded-lg p-3">
             {item.stock_codes ? (
               <div className="flex flex-wrap gap-1.5">
-                {item.stock_codes.split(',').map((code) => (
-                  <span
-                    key={code.trim()}
-                    className="inline-block px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-mono"
-                  >
-                    {code.trim()}
-                  </span>
-                ))}
+                {item.stock_codes.split(',').map((code) => {
+                  const trimmed = code.trim();
+                  return (
+                    <Link
+                      key={trimmed}
+                      href={`/stocks/${trimmed}`}
+                      className="inline-block px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-mono hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                    >
+                      {trimmed}
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-gray-500">无持仓数据</p>
