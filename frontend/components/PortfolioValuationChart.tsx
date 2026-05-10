@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { fetchPortfolioBacktestStatInfo, PortfolioBacktestStatInfo } from '@/lib/api';
+import { fetchPortfolioBacktestStatInfo, fetchStockCodes, PortfolioBacktestStatInfo } from '@/lib/api';
 import * as lwc from 'lightweight-charts';
 
 interface ChartConfig {
@@ -69,7 +69,7 @@ function getDisplayValue(item: PortfolioBacktestStatInfo, config: ChartConfig): 
 }
 
 /** 详情弹窗组件 */
-const DetailModal = ({ item, onClose }: { item: PortfolioBacktestStatInfo; onClose: () => void }) => (
+const DetailModal = ({ item, onClose, stockNameMap }: { item: PortfolioBacktestStatInfo; onClose: () => void; stockNameMap: Record<string, string> }) => (
   <div
     className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
     onClick={onClose}
@@ -107,13 +107,16 @@ const DetailModal = ({ item, onClose }: { item: PortfolioBacktestStatInfo; onClo
               <div className="flex flex-wrap gap-1.5">
                 {item.stock_codes.split(',').map((code) => {
                   const trimmed = code.trim();
+                  const name = stockNameMap[trimmed] || trimmed;
                   return (
                     <Link
                       key={trimmed}
                       href={`/stocks/${trimmed}`}
-                      className="inline-block px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 font-mono hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block px-2 py-0.5 bg-white border border-gray-200 rounded text-xs text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
                     >
-                      {trimmed}
+                      {name}
                     </Link>
                   );
                 })}
@@ -128,7 +131,7 @@ const DetailModal = ({ item, onClose }: { item: PortfolioBacktestStatInfo; onClo
   </div>
 );
 
-const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; config: ChartConfig }) => {
+const SingleChart = ({ data, config, stockNameMap }: { data: PortfolioBacktestStatInfo[]; config: ChartConfig; stockNameMap: Record<string, string> }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [detailItem, setDetailItem] = useState<PortfolioBacktestStatInfo | null>(null);
 
@@ -372,7 +375,7 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
 
       {/* 详情弹窗 */}
       {detailItem && (
-        <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+        <DetailModal item={detailItem} onClose={() => setDetailItem(null)} stockNameMap={stockNameMap} />
       )}
     </div>
   );
@@ -401,16 +404,23 @@ const PortfolioValuationChart = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedYears, setSelectedYears] = useState(10);
+  const [stockNameMap, setStockNameMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const result = await fetchPortfolioBacktestStatInfo();
+        const [result, stockCodes] = await Promise.all([
+          fetchPortfolioBacktestStatInfo(),
+          fetchStockCodes(),
+        ]);
         setData(result);
+        const map: Record<string, string> = {};
+        stockCodes.forEach(s => { map[s.code] = s.codeName; });
+        setStockNameMap(map);
         setError(null);
       } catch (err) {
-        console.error('Failed to load portfolio backtest stat info:', err);
+        console.error('Failed to load data:', err);
         setError('无法加载组合估值数据');
       } finally {
         setLoading(false);
@@ -468,7 +478,7 @@ const PortfolioValuationChart = () => {
       </div>
 
       {chartConfigs.map((config) => (
-        <SingleChart key={config.dataKey} data={filteredData} config={config} />
+        <SingleChart key={config.dataKey} data={filteredData} config={config} stockNameMap={stockNameMap} />
       ))}
     </div>
   );
