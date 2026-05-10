@@ -281,7 +281,7 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
 
       toolTip.style.display = 'block';
       toolTip.style.left = (param.point.x + 15) + 'px';
-      toolTip.style.top = (param.point.y - 30) + 'px';
+      toolTip.style.top = (param.point.y - 1) + 'px';
       toolTip.innerHTML = `<div style="font-weight:600;color:#374151;margin-bottom:2px">${dateStr}</div><div style="color:${config.color}">${config.title}: ${formattedValue}</div>`;
     });
 
@@ -363,7 +363,7 @@ const SingleChart = ({ data, config }: { data: PortfolioBacktestStatInfo[]; conf
         </div>
       )}
 
-      <div ref={chartContainerRef} className="w-full" />
+      <div ref={chartContainerRef} className="w-full" style={{ position: 'relative' }} />
 
       {/* 详情弹窗 */}
       {detailItem && (
