@@ -1043,4 +1043,257 @@ export class StockBetterService {
       peSpreadStandardDeviation: item.peSpreadStandardDeviation
     }));
   }
+
+  /**
+   * 根据日期查询银行股票数据（带分页和排名）
+   * 通过 stockinfo 表中 codeName 包含"银行"来筛选银行股
+   */
+  async findBanksByDate(
+    date: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{
+    data: StockDayPepbDataRecord[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    // 1. 获取所有银行股的代码
+    const bankCodes = await this.databaseService.query<{ code: string }>(
+      `SELECT DISTINCT code FROM stockinfo WHERE codeName LIKE '%银行%'`
+    );
+
+    if (bankCodes.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        page,
+        pageSize,
+        totalPages: 0,
+      };
+    }
+
+    const codeList = bankCodes.map(row => row.code);
+    const placeholders = codeList.map(() => '?').join(',');
+
+    // 2. 查询这些银行股在指定日期的数据
+    const allStocks = await this.databaseService.query<StockDayPepbData>(
+      `SELECT * FROM stock_day_pepb_data WHERE date = ? AND code IN (${placeholders})`,
+      [date, ...codeList]
+    );
+
+    if (allStocks.length === 0) {
+      return {
+        data: [],
+        total: 0,
+        page,
+        pageSize,
+        totalPages: 0,
+      };
+    }
+
+    // 3. 复用 findByDate 中的增强逻辑（股息率、EPS、排名等）
+    return this.enrichAndPaginateStocks(allStocks, date, page, pageSize);
+  }
+
+  /**
+   * 对股票数据进行增强（股息率、EPS、预测股息率、排名）并分页
+   * 提取自 findByDate 的公共逻辑
+   */
+  private async enrichAndPaginateStocks(
+    allStocks: StockDayPepbData[],
+    date: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<{
+    data: StockDayPepbDataRecord[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    // 分离PE/PB为负数的股票
+    const negativePEStocks = allStocks.filter(stock => (stock.peTTM || 0) < 0);
+    const negativePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) < 0);
+
+    // 正数PE股票（用于排名）
+    const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
+    // 正数PB股票（用于排名）
+    const positivePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) >= 0);
+
+    // 计算PE排名（只对正数PE排序）
+    const peSorted = [...positivePEStocks].sort((a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity));
+    // 计算PB排名（只对正数PB排序）
+    const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
+
+    // 根据查询日期动态确定分红统计年份范围
+    const queryDate = new Date(date);
+    const queryYear = queryDate.getFullYear();
+    const queryMonth = queryDate.getMonth() + 1;
+    const isSecondHalfYear = queryMonth >= 5;
+    const dividendYearThreshold = isSecondHalfYear ? queryYear - 1 : queryYear - 2;
+
+    // 获取所有股票的分红汇总数据
+    const bonusSummarySql = `
+      SELECT
+        code,
+        SUM(amount) as totalAmount,
+        SUM(stockDividend) as totalStockDividend
+      FROM stock_bonus_data
+      WHERE dateStr > ?
+      GROUP BY code
+    `;
+    const bonusSummaries = await this.databaseService.query<any>(bonusSummarySql, [dividendYearThreshold.toString()]);
+
+    // 创建分红汇总映射
+    const bonusMap = new Map<string, { totalAmount: number; totalStockDividend: number }>();
+    for (const summary of bonusSummaries) {
+      bonusMap.set(summary.code, {
+        totalAmount: summary.totalAmount || 0,
+        totalStockDividend: summary.totalStockDividend || 0,
+      });
+    }
+
+    // 计算股息率并添加到股票对象
+    const stocksWithDividendYield = allStocks.map(stock => {
+      const bonus = bonusMap.get(stock.code);
+      const closePrice = stock.close || 0;
+      let dividendYield = 0;
+
+      if (bonus && closePrice > 0) {
+        dividendYield = (bonus.totalAmount / closePrice) + (bonus.totalStockDividend || 0);
+      }
+
+      return {
+        ...stock,
+        dividendYield,
+      };
+    });
+
+    // 查询EPS数据
+    const epsQueryYear = queryYear.toString();
+    const epsSql = `
+      SELECT SECUCODE, EPS
+      FROM eastmoney_eps_predict
+      WHERE YEAR = ?
+    `;
+    const epsResults = await this.databaseService.query<any>(epsSql, [epsQueryYear]);
+
+    const epsMap = new Map<string, number>();
+    for (const row of epsResults) {
+      const eastmoneyCode = row.SECUCODE;
+      const localCode = this.convertFromEastmoneyCode(eastmoneyCode);
+      const eps = parseFloat(row.EPS) || 0;
+      if (localCode && eps > 0) {
+        epsMap.set(localCode, eps);
+      }
+    }
+
+    // 查询股息支付率
+    const threeYearsAgo = new Date(queryDate);
+    threeYearsAgo.setFullYear(queryYear - 3);
+    const startDateStr = threeYearsAgo.toISOString().split('T')[0];
+    const endDateStr = date;
+
+    const dividendRatioSql = `
+      SELECT SECUCODE, avg(DIVIDEND_PAY_IMPLE) as avgDividendPayRatio
+      FROM eastmoney_dividend_ratio
+      WHERE REPORT_DATE >= ? and REPORT_DATE < ?
+      GROUP BY SECUCODE
+    `;
+    const dividendRatioResults = await this.databaseService.query<any>(dividendRatioSql, [startDateStr, endDateStr]);
+
+    const dividendRatioMap = new Map<string, number>();
+    for (const row of dividendRatioResults) {
+      const eastmoneyCode = row.SECUCODE;
+      const localCode = this.convertFromEastmoneyCode(eastmoneyCode);
+      const avgDividendPayRatio = parseFloat(row.avgDividendPayRatio) || 0;
+      if (localCode && avgDividendPayRatio > 0) {
+        dividendRatioMap.set(localCode, avgDividendPayRatio);
+      }
+    }
+
+    // 计算预测股息率
+    const stocksWithPredictDividend = stocksWithDividendYield.map(stock => {
+      const eps = epsMap.get(stock.code) || 0;
+      const dividendPayRatio = dividendRatioMap.get(stock.code) || 0;
+      const closePrice = stock.close || 0;
+      let predictDividendRatio = 0;
+
+      if (eps > 0 && dividendPayRatio > 0 && closePrice > 0) {
+        predictDividendRatio = (eps * (dividendPayRatio / 100)) / closePrice;
+      }
+
+      return {
+        ...stock,
+        eps,
+        dividendPayRatio,
+        predictDividendRatio,
+      };
+    });
+
+    // 股息率排名
+    const dvSorted = [...stocksWithPredictDividend].sort((a, b) => b.dividendYield - a.dividendYield);
+    const dvRankMap = new Map<string, number>();
+    dvSorted.forEach((stock, index) => {
+      dvRankMap.set(stock.code, index + 1);
+    });
+
+    // 预测股息率排名
+    const pdSorted = [...stocksWithPredictDividend].sort((a, b) => b.predictDividendRatio - a.predictDividendRatio);
+    const pdRankMap = new Map<string, number>();
+    pdSorted.forEach((stock, index) => {
+      pdRankMap.set(stock.code, index + 1);
+    });
+
+    // PE排名映射
+    const peRankMap = new Map<string, number>();
+    peSorted.forEach((stock, index) => {
+      peRankMap.set(stock.code, index + 1);
+    });
+
+    // PB排名映射
+    const pbRankMap = new Map<string, number>();
+    pbSorted.forEach((stock, index) => {
+      pbRankMap.set(stock.code, index + 1);
+    });
+
+    // 计算综合排名
+    const stocksWithRank = stocksWithPredictDividend.map(stock => {
+      const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
+      const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
+      const dvRank = (stock.dividendYield || 0) <= 0 ? (dvSorted.length + 1) : (dvRankMap.get(stock.code) || (dvSorted.length + 1));
+      const pdRank = (stock.predictDividendRatio || 0) <= 0 ? (pdSorted.length + 1) : (pdRankMap.get(stock.code) || (pdSorted.length + 1));
+
+      return {
+        ...stock,
+        peRank,
+        pbRank,
+        dvRank,
+        pdRank,
+        totalRank: peRank + pbRank + pdRank,
+      };
+    });
+
+    // 按综合排名升序排序
+    stocksWithRank.sort((a, b) => a.totalRank - b.totalRank);
+
+    // 分页
+    const total = stocksWithRank.length;
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedData = stocksWithRank.slice(startIndex, endIndex);
+
+    // 移除排名字段
+    const data = paginatedData.map(({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock);
+
+    return {
+      data,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
 }

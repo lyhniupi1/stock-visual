@@ -254,6 +254,40 @@ export async function fetchStocksByDate(
 }
 
 /**
+ * 按日期获取银行股票数据（带分页）
+ */
+export async function fetchBanksByDate(
+  date: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<{
+  data: StockData[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> {
+  try {
+    const response = await fetch(
+      getApiUrl(`/stocks/banks/date/${date}?page=${page}&pageSize=${pageSize}`)
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch banks by date:', error);
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: pageSize,
+      totalPages: 0,
+    };
+  }
+}
+
+/**
  * 获取股票历史数据（用于K线图）
  */
 export async function fetchStockHistory(code: string, limit: number = 365): Promise<StockData[]> {

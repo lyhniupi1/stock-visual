@@ -69,6 +69,25 @@ export class StockController {
     );
   }
 
+  @Get('banks/date/:date')
+  async getBanksByDate(
+    @Param('date') date: string,
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '20',
+  ): Promise<{
+    data: StockDayPepbData[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    return this.stockService.findBanksByDate(
+      date,
+      parseInt(page, 10),
+      parseInt(pageSize, 10),
+    );
+  }
+
   @Get(':code/history')
   async getStockHistory(
     @Param('code') code: string,
