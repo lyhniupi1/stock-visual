@@ -1233,15 +1233,54 @@ export class StockBetterService {
       };
     });
 
+    // 查询银行最新财务数据（核心资本充足率、不良贷款率、拨备覆盖率）
+    const bankFinancialSql = `
+      SELECT SECUCODE, HXYJBCZL, NONPERLOAN, BLDKBBL
+      FROM eastmoney_bank_financial
+      WHERE (SECUCODE, REPORT_DATE) IN (
+        SELECT SECUCODE, MAX(REPORT_DATE)
+        FROM eastmoney_bank_financial
+        GROUP BY SECUCODE
+      )
+    `;
+    const bankFinancialResults = await this.databaseService.query<any>(bankFinancialSql);
+
+    // 创建银行财务数据映射（key: 本地代码格式 "sh.600000"）
+    const bankFinancialMap = new Map<string, { coreCapitalRatio: string; nonPerfLoanRatio: string; loanLossCoverRatio: string }>();
+    for (const row of bankFinancialResults) {
+      const localCode = this.convertFromEastmoneyCode(row.SECUCODE);
+      if (localCode) {
+        bankFinancialMap.set(localCode, {
+          coreCapitalRatio: row.HXYJBCZL || '',
+          nonPerfLoanRatio: row.NONPERLOAN || '',
+          loanLossCoverRatio: row.BLDKBBL || '',
+        });
+      }
+    }
+
+    // 将银行财务数据附加到股票对象
+    const stocksWithBankFinancial = stocksWithPredictDividend.map(stock => {
+      const bankFin = bankFinancialMap.get(stock.code);
+      if (bankFin) {
+        return {
+          ...stock,
+          coreCapitalRatio: bankFin.coreCapitalRatio,
+          nonPerfLoanRatio: bankFin.nonPerfLoanRatio,
+          loanLossCoverRatio: bankFin.loanLossCoverRatio,
+        };
+      }
+      return stock;
+    });
+
     // 股息率排名
-    const dvSorted = [...stocksWithPredictDividend].sort((a, b) => b.dividendYield - a.dividendYield);
+    const dvSorted = [...stocksWithBankFinancial].sort((a, b) => b.dividendYield - a.dividendYield);
     const dvRankMap = new Map<string, number>();
     dvSorted.forEach((stock, index) => {
       dvRankMap.set(stock.code, index + 1);
     });
 
     // 预测股息率排名
-    const pdSorted = [...stocksWithPredictDividend].sort((a, b) => b.predictDividendRatio - a.predictDividendRatio);
+    const pdSorted = [...stocksWithBankFinancial].sort((a, b) => b.predictDividendRatio - a.predictDividendRatio);
     const pdRankMap = new Map<string, number>();
     pdSorted.forEach((stock, index) => {
       pdRankMap.set(stock.code, index + 1);
@@ -1260,7 +1299,7 @@ export class StockBetterService {
     });
 
     // 计算综合排名
-    const stocksWithRank = stocksWithPredictDividend.map(stock => {
+    const stocksWithRank = stocksWithBankFinancial.map(stock => {
       const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
       const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
       const dvRank = (stock.dividendYield || 0) <= 0 ? (dvSorted.length + 1) : (dvRankMap.get(stock.code) || (dvSorted.length + 1));

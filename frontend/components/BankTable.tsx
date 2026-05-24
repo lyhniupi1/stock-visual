@@ -10,6 +10,11 @@ interface PaginationInfo {
   totalPages: number;
 }
 
+interface BankEvaluation {
+  canBuy: boolean;
+  reasons: string[];
+}
+
 interface BankStock {
   code: string;
   name: string;
@@ -22,6 +27,67 @@ interface BankStock {
   eps?: number;
   dividendPayRatio?: number;
   predictDividendRatio?: number;
+  coreCapitalRatio?: string;   // 核心资本充足率(%)
+  nonPerfLoanRatio?: string;   // 不良贷款率(%)
+  loanLossCoverRatio?: string; // 不良贷款拨备覆盖率(%)
+  evaluation: BankEvaluation;
+}
+
+/**
+ * 评估银行股是否可以买入
+ * 规则：
+ * 1. 预测股息率大于5%才进行买入
+ * 2. 不良贷款率：低于1.5%，最高不高于2%
+ * 3. 拨备覆盖率：200%以上，最低不低于150%
+ * 4. 核心资本充足率：10.5%以上，最低不低于9%
+ */
+function evaluateBank(bank: BankStock): BankEvaluation {
+  const reasons: string[] = [];
+
+  // 1. 预测股息率检查（predictDividendRatio 为小数，如 0.05 表示 5%）
+  const predDivYield = (bank.predictDividendRatio || 0) * 100;
+  if (predDivYield <= 5) {
+    reasons.push(`预测股息率 ${predDivYield.toFixed(2)}%，需要大于5%`);
+  }
+
+  // 2. 不良贷款率检查
+  if (bank.nonPerfLoanRatio) {
+    const npl = parseFloat(bank.nonPerfLoanRatio);
+    if (npl >= 2) {
+      reasons.push(`不良贷款率 ${bank.nonPerfLoanRatio}%，高于2%`);
+    } else if (npl > 1.5) {
+      reasons.push(`不良贷款率 ${bank.nonPerfLoanRatio}%，高于1.5%（警戒线）`);
+    }
+  } else {
+    reasons.push('缺少不良贷款率数据');
+  }
+
+  // 3. 拨备覆盖率检查（150%以上即可买入）
+  if (bank.loanLossCoverRatio) {
+    const llc = parseFloat(bank.loanLossCoverRatio);
+    if (llc < 150) {
+      reasons.push(`拨备覆盖率 ${bank.loanLossCoverRatio}%，低于150%`);
+    }
+  } else {
+    reasons.push('缺少拨备覆盖率数据');
+  }
+
+  // 4. 核心资本充足率检查
+  if (bank.coreCapitalRatio) {
+    const ccr = parseFloat(bank.coreCapitalRatio);
+    if (ccr < 9) {
+      reasons.push(`核心资本充足率 ${bank.coreCapitalRatio}%，低于9%`);
+    } else if (ccr < 10.5) {
+      reasons.push(`核心资本充足率 ${bank.coreCapitalRatio}%，低于10.5%（警戒线）`);
+    }
+  } else {
+    reasons.push('缺少核心资本充足率数据');
+  }
+
+  return {
+    canBuy: reasons.length === 0,
+    reasons,
+  };
 }
 
 const BankTable = () => {
@@ -49,20 +115,27 @@ const BankTable = () => {
     try {
       setLoading(true);
       const result = await fetchBanksByDate(date, page, pageSize);
-      // 转换为简化格式
-      const simplifiedData = result.data.map((stock: StockData) => ({
-        code: stock.code,
-        name: stock.codeName || stock.code,
-        price: stock.close || 0,
-        change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
-        pe: stock.peTTM || 0,
-        pb: stock.pbMRQ || 0,
-        volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0',
-        dividendYield: stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : '0.00%',
-        eps: stock.eps || 0,
-        dividendPayRatio: stock.dividendPayRatio || 0,
-        predictDividendRatio: stock.predictDividendRatio || 0,
-      }));
+      // 转换为简化格式并执行投资评估
+      const simplifiedData: BankStock[] = result.data.map((stock: StockData) => {
+        const item = {
+          code: stock.code,
+          name: stock.codeName || stock.code,
+          price: stock.close || 0,
+          change: stock.pctChg ? `${stock.pctChg > 0 ? '+' : ''}${stock.pctChg.toFixed(2)}%` : '0.00%',
+          pe: stock.peTTM || 0,
+          pb: stock.pbMRQ || 0,
+          volume: stock.volume ? `${(stock.volume / 10000).toFixed(1)}万` : '0',
+          dividendYield: stock.dividendYield ? `${(stock.dividendYield * 100).toFixed(2)}%` : '0.00%',
+          eps: stock.eps || 0,
+          dividendPayRatio: stock.dividendPayRatio || 0,
+          predictDividendRatio: stock.predictDividendRatio || 0,
+          coreCapitalRatio: (stock as any).coreCapitalRatio,
+          nonPerfLoanRatio: (stock as any).nonPerfLoanRatio,
+          loanLossCoverRatio: (stock as any).loanLossCoverRatio,
+        } as BankStock;
+        item.evaluation = evaluateBank(item);
+        return item;
+      });
       setBanks(simplifiedData);
       setPagination({
         total: result.total,
@@ -138,6 +211,33 @@ const BankTable = () => {
   }
 
   return (
+    <div className="space-y-6">
+    {/* 判断标准说明卡片 */}
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5">
+      <h3 className="text-lg font-bold text-blue-800 mb-3">📊 银行股投资判断标准</h3>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white bg-opacity-70 rounded-lg p-3 border border-blue-100">
+          <div className="text-sm font-semibold text-blue-700 mb-1">① 预测股息率</div>
+          <div className="text-xs text-gray-600">大于 <span className="text-green-600 font-bold">5%</span> 才可买入</div>
+        </div>
+        <div className="bg-white bg-opacity-70 rounded-lg p-3 border border-blue-100">
+          <div className="text-sm font-semibold text-blue-700 mb-1">② 不良贷款率</div>
+          <div className="text-xs text-gray-600">低于 <span className="text-green-600 font-bold">1.5%</span>，最高不高于 <span className="text-red-500 font-bold">2%</span></div>
+        </div>
+        <div className="bg-white bg-opacity-70 rounded-lg p-3 border border-blue-100">
+          <div className="text-sm font-semibold text-blue-700 mb-1">③ 拨备覆盖率</div>
+          <div className="text-xs text-gray-600">不低于 <span className="text-green-600 font-bold">150%</span> 即可买入（200%以上更佳）</div>
+        </div>
+        <div className="bg-white bg-opacity-70 rounded-lg p-3 border border-blue-100">
+          <div className="text-sm font-semibold text-blue-700 mb-1">④ 核心资本充足率</div>
+          <div className="text-xs text-gray-600"><span className="text-green-600 font-bold">10.5%</span> 以上，最低不低于 <span className="text-red-500 font-bold">9%</span></div>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center space-x-4 text-xs">
+        <span className="flex items-center"><span className="inline-block w-3 h-3 bg-green-500 rounded-sm mr-1"></span> 绿色行 = 符合买入条件</span>
+        <span className="flex items-center"><span className="inline-block w-3 h-3 bg-red-500 rounded-sm mr-1"></span> 红色行 = 不符合条件（鼠标悬浮查看原因）</span>
+      </div>
+    </div>
     <div className="overflow-x-auto">
       <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
@@ -208,6 +308,9 @@ const BankTable = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预测EPS</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股息支付率</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预测股息率</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">核心资本充足率</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">不良贷款率</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">拨备覆盖率</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">成交量</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
             </tr>
@@ -215,13 +318,24 @@ const BankTable = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {banks.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={16} className="px-6 py-12 text-center text-gray-500">
                   该日期暂无银行股数据
                 </td>
               </tr>
             ) : (
-              banks.map((bank, index) => (
-                <tr key={bank.code} className="hover:bg-gray-50">
+              banks.map((bank, index) => {
+                const rowBgClass = bank.evaluation.canBuy
+                  ? 'bg-green-50 hover:bg-green-100'
+                  : 'bg-red-50 hover:bg-red-100';
+                const tooltipContent = bank.evaluation.canBuy
+                  ? '✓ 符合买入条件'
+                  : `✗ 不符合买入条件:\n${bank.evaluation.reasons.join('\n')}`;
+                return (
+                <tr
+                  key={bank.code}
+                  className={`${rowBgClass} transition-colors relative group`}
+                  title={tooltipContent}
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="font-mono font-bold text-blue-600">{(pagination.page - 1) * pagination.pageSize + index + 1}</span>
                   </td>
@@ -276,6 +390,21 @@ const BankTable = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="font-medium text-blue-600">
+                      {bank.coreCapitalRatio ? `${bank.coreCapitalRatio}%` : 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`font-medium ${bank.nonPerfLoanRatio ? (parseFloat(bank.nonPerfLoanRatio) < 1 ? 'text-green-600' : parseFloat(bank.nonPerfLoanRatio) < 2 ? 'text-yellow-600' : 'text-red-600') : ''}`}>
+                      {bank.nonPerfLoanRatio ? `${bank.nonPerfLoanRatio}%` : 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`font-medium ${bank.loanLossCoverRatio ? (parseFloat(bank.loanLossCoverRatio) > 300 ? 'text-green-600' : parseFloat(bank.loanLossCoverRatio) > 200 ? 'text-yellow-600' : 'text-red-600') : ''}`}>
+                      {bank.loanLossCoverRatio ? `${bank.loanLossCoverRatio}%` : 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-gray-900">{bank.volume}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -287,7 +416,8 @@ const BankTable = () => {
                     </button>
                   </td>
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
@@ -362,6 +492,7 @@ const BankTable = () => {
       <div className="mt-4 text-sm text-gray-500">
         <p>数据来源：本地数据库，最后更新：{new Date().toLocaleDateString('zh-CN')}</p>
       </div>
+    </div>
     </div>
   );
 };
