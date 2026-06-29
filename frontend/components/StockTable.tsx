@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { fetchSimplifiedStocks, SimplifiedStock } from '@/lib/api';
+import { fetchSimplifiedStocks, SimplifiedStock, fetchPercentileData, PercentileData } from '@/lib/api';
 
 interface PaginationInfo {
   total: number;
@@ -21,6 +21,12 @@ const StockTable = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [percentileModal, setPercentileModal] = useState<{
+    visible: boolean;
+    loading: boolean;
+    data: PercentileData | null;
+    error: string | null;
+  }>({ visible: false, loading: false, data: null, error: null });
 
   // 获取今天的日期，格式为YYYY-MM-DD
   const getTodayDate = () => {
@@ -99,6 +105,25 @@ const StockTable = () => {
   const handleViewStock = (code: string, name: string) => {
     const url = `/stocks/${code}?name=${encodeURIComponent(name)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleViewPercentile = async (code: string, name: string) => {
+    setPercentileModal({ visible: true, loading: true, data: null, error: null });
+    try {
+      const data = await fetchPercentileData(code, selectedDate);
+      setPercentileModal({ visible: true, loading: false, data, error: null });
+    } catch (err) {
+      setPercentileModal({
+        visible: true,
+        loading: false,
+        data: null,
+        error: `获取 ${name}(${code}) 的历史分位数据失败`,
+      });
+    }
+  };
+
+  const closePercentileModal = () => {
+    setPercentileModal({ visible: false, loading: false, data: null, error: null });
   };
 
   if (loading) {
@@ -207,7 +232,7 @@ const StockTable = () => {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">股息支付率</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">预测股息率</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">成交量</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 bg-gray-50 shadow-lg">操作</th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
@@ -269,13 +294,19 @@ const StockTable = () => {
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="text-gray-900">{stock.volume}</span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex space-x-2">
+              <td className="px-4 py-4 whitespace-nowrap sticky right-0 bg-white shadow-lg">
+                <div className="flex space-x-1">
                   <button
                     onClick={() => handleViewStock(stock.code, stock.name)}
-                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200"
+                    className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 whitespace-nowrap"
                   >
                     查看
+                  </button>
+                  <button
+                    onClick={() => handleViewPercentile(stock.code, stock.name)}
+                    className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs hover:bg-purple-200 whitespace-nowrap"
+                  >
+                    历史分位
                   </button>
                 </div>
               </td>
@@ -351,11 +382,161 @@ const StockTable = () => {
         </div>
       )}
       
+      {/* 历史百分位弹窗 */}
+      {percentileModal.visible && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            {/* 弹窗头部 */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-800">
+                历史分位
+                {percentileModal.data && (
+                  <span className="ml-2 text-base font-normal text-gray-500">
+                    {percentileModal.data.codeName}({percentileModal.data.code}) - {percentileModal.data.date}
+                  </span>
+                )}
+              </h3>
+              <button
+                onClick={closePercentileModal}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* 弹窗内容 */}
+            <div className="p-6">
+              {percentileModal.loading && (
+                <div className="flex justify-center items-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div>
+                  <span className="ml-3 text-gray-600">正在获取历史分位数据...</span>
+                </div>
+              )}
+
+              {percentileModal.error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+                  {percentileModal.error}
+                </div>
+              )}
+
+              {percentileModal.data && !percentileModal.loading && (
+                <div>
+                  {/* 当前值概览 */}
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="bg-blue-50 rounded-lg p-4 text-center">
+                      <div className="text-sm text-gray-500">收盘价</div>
+                      <div className="text-2xl font-bold text-blue-700">
+                        {percentileModal.data.close?.toFixed(2) ?? 'N/A'}
+                      </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 text-center">
+                      <div className="text-sm text-gray-500">PE(TTM)</div>
+                      <div className="text-2xl font-bold text-green-700">
+                        {percentileModal.data.pe?.toFixed(2) ?? 'N/A'}
+                      </div>
+                    </div>
+                    <div className="bg-orange-50 rounded-lg p-4 text-center">
+                      <div className="text-sm text-gray-500">PB(MRQ)</div>
+                      <div className="text-2xl font-bold text-orange-700">
+                        {percentileModal.data.pb?.toFixed(2) ?? 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 百分位表格 */}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 border rounded-lg">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">指标</th>
+                          {percentileModal.data.percentiles.map((p) => (
+                            <th key={p.period} className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                              {p.period}
+                              <div className="text-[10px] text-gray-400 font-normal mt-0.5">
+                                {p.count}条
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr className="hover:bg-blue-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 whitespace-nowrap">收盘价百分位</td>
+                          {percentileModal.data.percentiles.map((p) => (
+                            <td key={`close-${p.period}`} className="px-4 py-3 text-center">
+                              <PercentileBadge value={p.closePercentile} />
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="hover:bg-green-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 whitespace-nowrap">PE百分位</td>
+                          {percentileModal.data.percentiles.map((p) => (
+                            <td key={`pe-${p.period}`} className="px-4 py-3 text-center">
+                              <PercentileBadge value={p.pePercentile} />
+                            </td>
+                          ))}
+                        </tr>
+                        <tr className="hover:bg-orange-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-700 whitespace-nowrap">PB百分位</td>
+                          {percentileModal.data.percentiles.map((p) => (
+                            <td key={`pb-${p.period}`} className="px-4 py-3 text-center">
+                              <PercentileBadge value={p.pbPercentile} />
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 数据范围说明 */}
+                  <div className="mt-4 text-xs text-gray-400 space-y-1">
+                    {percentileModal.data.percentiles.map((p) => (
+                      <div key={`range-${p.period}`}>
+                        {p.period}：{p.actualStartDate} ~ {percentileModal.data?.date}（共 {p.count} 个交易日）
+                      </div>
+                    ))}
+                    <div className="mt-1">
+                      百分位 = 当前值在历史数据中排在什么位置（值越小表示越低于历史水平）
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 text-sm text-gray-500">
         <p>数据来源：本地数据库，最后更新：{new Date().toLocaleDateString('zh-CN')}</p>
       </div>
     </div>
   );
 };
+
+/** 百分位徽章组件 */
+function PercentileBadge({ value }: { value: number | null }) {
+  if (value === null || value === undefined) {
+    return <span className="text-gray-400">N/A</span>;
+  }
+
+  let colorClass: string;
+  if (value <= 20) {
+    colorClass = 'bg-green-100 text-green-800';
+  } else if (value <= 40) {
+    colorClass = 'bg-blue-100 text-blue-800';
+  } else if (value <= 60) {
+    colorClass = 'bg-yellow-100 text-yellow-800';
+  } else if (value <= 80) {
+    colorClass = 'bg-orange-100 text-orange-800';
+  } else {
+    colorClass = 'bg-red-100 text-red-800';
+  }
+
+  return (
+    <span className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${colorClass}`}>
+      {value.toFixed(1)}%
+    </span>
+  );
+}
 
 export default StockTable;

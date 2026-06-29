@@ -949,6 +949,52 @@ function generateMockEquityBondSpreadData(): EquityBondSpreadData[] {
   return mockData;
 }
 
+// ==================== 历史百分位 API ====================
+
+/**
+ * 百分位数据项
+ */
+export interface PercentileItem {
+  period: string;
+  years: number;
+  closePercentile: number | null;
+  pePercentile: number | null;
+  pbPercentile: number | null;
+  count: number;
+  actualStartDate: string;
+}
+
+/**
+ * 百分位响应数据
+ */
+export interface PercentileData {
+  date: string;
+  code: string;
+  codeName: string | null;
+  close: number | null;
+  pe: number | null;
+  pb: number | null;
+  percentiles: PercentileItem[];
+}
+
+/**
+ * 获取股票在指定日期的 close、pe、pb 在不同时间范围的历史百分位
+ * @param code 股票代码
+ * @param date 日期 (YYYY-MM-DD)
+ */
+export async function fetchPercentileData(code: string, date: string): Promise<PercentileData> {
+  try {
+    const response = await fetch(getApiUrl(`/stocks/${code}/percentile?date=${date}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch percentile data:', error);
+    throw error;
+  }
+}
+
 /**
  * 获取组合回测统计信息（PE中位数、PB中位数、PE*PB中位数、分红率、ROE中位数）
  */
