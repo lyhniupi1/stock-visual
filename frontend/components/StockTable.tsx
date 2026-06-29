@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { fetchSimplifiedStocks, SimplifiedStock, fetchPercentileData, PercentileData } from '@/lib/api';
+import { fetchSimplifiedStocks, SimplifiedStock, fetchPercentileData, PercentileData, fetchDividendRatioHistory, DividendRatioData } from '@/lib/api';
 
 interface PaginationInfo {
   total: number;
@@ -25,8 +25,9 @@ const StockTable = () => {
     visible: boolean;
     loading: boolean;
     data: PercentileData | null;
+    dividendRatio: DividendRatioData[];
     error: string | null;
-  }>({ visible: false, loading: false, data: null, error: null });
+  }>({ visible: false, loading: false, data: null, dividendRatio: [], error: null });
 
   // 获取今天的日期，格式为YYYY-MM-DD
   const getTodayDate = () => {
@@ -108,22 +109,32 @@ const StockTable = () => {
   };
 
   const handleViewPercentile = async (code: string, name: string) => {
-    setPercentileModal({ visible: true, loading: true, data: null, error: null });
+    setPercentileModal({ visible: true, loading: true, data: null, dividendRatio: [], error: null });
     try {
-      const data = await fetchPercentileData(code, selectedDate);
-      setPercentileModal({ visible: true, loading: false, data, error: null });
+      const [data, dividendRatio] = await Promise.all([
+        fetchPercentileData(code, selectedDate),
+        fetchDividendRatioHistory(code),
+      ]);
+      // 只保留近5年的数据
+      const fiveYearsAgo = new Date();
+      fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+      const recentDividendRatio = (dividendRatio || []).filter(
+        (d) => d.date && new Date(d.date) >= fiveYearsAgo
+      ).sort((a, b) => b.date.localeCompare(a.date));
+      setPercentileModal({ visible: true, loading: false, data, dividendRatio: recentDividendRatio, error: null });
     } catch (err) {
       setPercentileModal({
         visible: true,
         loading: false,
         data: null,
+        dividendRatio: [],
         error: `获取 ${name}(${code}) 的历史分位数据失败`,
       });
     }
   };
 
   const closePercentileModal = () => {
-    setPercentileModal({ visible: false, loading: false, data: null, error: null });
+    setPercentileModal({ visible: false, loading: false, data: null, dividendRatio: [], error: null });
   };
 
   if (loading) {
@@ -545,6 +556,41 @@ const StockTable = () => {
                       百分位 = 当前值在历史数据中排在什么位置（值越小表示越低于历史水平）
                     </div>
                   </div>
+
+                  {/* 近5年股息支付率 */}
+                  {percentileModal.dividendRatio.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-bold text-gray-700 mb-3">近5年股息支付率</h4>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 border rounded-lg">
+                          <thead>
+                            <tr className="bg-gray-50">
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">报告日期</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">股息支付率</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">每股股息</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {percentileModal.dividendRatio.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="px-4 py-2 text-sm text-gray-700">{item.date}</td>
+                                <td className="px-4 py-2 text-sm text-right font-medium">
+                                  <span className={`${
+                                    (item.dividendPayRatio || 0) >= 30 ? 'text-green-600' : 'text-orange-600'
+                                  }`}>
+                                    {item.dividendPayRatio != null ? `${item.dividendPayRatio.toFixed(1)}%` : 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-sm text-right text-gray-700">
+                                  {item.dividendImple != null ? `¥${item.dividendImple.toFixed(3)}` : 'N/A'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
