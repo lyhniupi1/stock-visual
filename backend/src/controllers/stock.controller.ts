@@ -192,6 +192,10 @@ export class StockController {
     close: number | null;
     pe: number | null;
     pb: number | null;
+    close_20240924: number | null;
+    close_20250407: number | null;
+    close_lower_than_20240924: boolean | null;
+    close_lower_than_20250407: boolean | null;
     percentiles: {
       period: string;
       years: number;

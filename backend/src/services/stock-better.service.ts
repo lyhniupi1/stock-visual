@@ -1112,6 +1112,10 @@ export class StockBetterService {
     close: number | null;
     pe: number | null;
     pb: number | null;
+    close_20240924: number | null;
+    close_20250407: number | null;
+    close_lower_than_20240924: boolean | null;
+    close_lower_than_20250407: boolean | null;
     percentiles: {
       period: string;
       years: number;
@@ -1151,6 +1155,24 @@ export class StockBetterService {
       { period: '15年', years: 15 },
       { period: '全部', years: -1 }, // -1 表示全部历史
     ];
+
+    // 4. 查询特定日期的收盘价
+    const REFERENCE_DATES = ['2024-09-24', '2025-04-07'];
+    const closeMap = new Map<string, number | null>();
+    for (const refDate of REFERENCE_DATES) {
+      const record = await this.databaseService.queryOne<StockDayPepbData>(
+        'SELECT close FROM stock_day_pepb_data WHERE code = ? AND date = ?',
+        [code, refDate],
+      );
+      closeMap.set(refDate, record?.close ?? null);
+    }
+
+    const close_20240924 = closeMap.get('2024-09-24') ?? null;
+    const close_20250407 = closeMap.get('2025-04-07') ?? null;
+
+    // 比较当前 close 是否低于特定日期
+    const close_lower_than_20240924 = close != null && close_20240924 != null ? close < close_20240924 : null;
+    const close_lower_than_20250407 = close != null && close_20250407 != null ? close < close_20250407 : null;
 
     // 解析目标日期
     const targetDate = new Date(date);
@@ -1218,6 +1240,10 @@ export class StockBetterService {
       close,
       pe,
       pb,
+      close_20240924,
+      close_20250407,
+      close_lower_than_20240924,
+      close_lower_than_20250407,
       percentiles,
     };
   }

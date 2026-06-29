@@ -443,6 +443,52 @@ const StockTable = () => {
                     </div>
                   </div>
 
+                  {/* 参考日期收盘价对比 */}
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className={`rounded-lg p-4 text-center border-2 ${
+                      percentileModal.data.close_lower_than_20240924 === true
+                        ? 'bg-red-50 border-red-300'
+                        : percentileModal.data.close_lower_than_20240924 === false
+                        ? 'bg-green-50 border-green-300'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="text-sm text-gray-500">2024-09-24 收盘价</div>
+                      <div className="text-xl font-bold text-gray-800">
+                        {percentileModal.data.close_20240924?.toFixed(2) ?? 'N/A'}
+                      </div>
+                      {percentileModal.data.close_lower_than_20240924 === true && (
+                        <div className="mt-1 text-sm font-medium text-red-600">⬇ 低于彼时</div>
+                      )}
+                      {percentileModal.data.close_lower_than_20240924 === false && (
+                        <div className="mt-1 text-sm font-medium text-green-600">⬆ 高于彼时</div>
+                      )}
+                      {percentileModal.data.close_lower_than_20240924 === null && (
+                        <div className="mt-1 text-sm text-gray-400">无比较</div>
+                      )}
+                    </div>
+                    <div className={`rounded-lg p-4 text-center border-2 ${
+                      percentileModal.data.close_lower_than_20250407 === true
+                        ? 'bg-red-50 border-red-300'
+                        : percentileModal.data.close_lower_than_20250407 === false
+                        ? 'bg-green-50 border-green-300'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="text-sm text-gray-500">2025-04-07 收盘价</div>
+                      <div className="text-xl font-bold text-gray-800">
+                        {percentileModal.data.close_20250407?.toFixed(2) ?? 'N/A'}
+                      </div>
+                      {percentileModal.data.close_lower_than_20250407 === true && (
+                        <div className="mt-1 text-sm font-medium text-red-600">⬇ 低于彼时</div>
+                      )}
+                      {percentileModal.data.close_lower_than_20250407 === false && (
+                        <div className="mt-1 text-sm font-medium text-green-600">⬆ 高于彼时</div>
+                      )}
+                      {percentileModal.data.close_lower_than_20250407 === null && (
+                        <div className="mt-1 text-sm text-gray-400">无比较</div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* 百分位表格 */}
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 border rounded-lg">
