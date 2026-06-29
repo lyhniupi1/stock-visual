@@ -181,6 +181,30 @@ export class StockController {
     return obj;
   }
 
+  @Get(':code/percentile')
+  async getPercentileData(
+    @Param('code') code: string,
+    @Query('date') date: string,
+  ): Promise<{
+    date: string;
+    code: string;
+    codeName: string | null;
+    close: number | null;
+    pe: number | null;
+    pb: number | null;
+    percentiles: {
+      period: string;
+      years: number;
+      closePercentile: number | null;
+      pePercentile: number | null;
+      pbPercentile: number | null;
+      count: number;
+      actualStartDate: string;
+    }[];
+  }> {
+    return this.stockService.getPercentileData(code, date);
+  }
+
   @Get(':code/dividend-ratio')
   async getDividendRatioHistory(
     @Param('code') code: string,

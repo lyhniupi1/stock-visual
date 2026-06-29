@@ -1098,6 +1098,131 @@ export class StockBetterService {
   }
 
   /**
+   * 获取股票在指定日期的 close、pe、pb 在 date 之前不同时间范围的历史百分位
+   * @param code 股票代码
+   * @param date 日期 (YYYY-MM-DD)
+   */
+  async getPercentileData(
+    code: string,
+    date: string,
+  ): Promise<{
+    date: string;
+    code: string;
+    codeName: string | null;
+    close: number | null;
+    pe: number | null;
+    pb: number | null;
+    percentiles: {
+      period: string;
+      years: number;
+      closePercentile: number | null;
+      pePercentile: number | null;
+      pbPercentile: number | null;
+      count: number;
+      actualStartDate: string;
+    }[];
+  }> {
+    // 1. 获取当前日期的股票数据
+    const currentData = await this.databaseService.queryOne<StockDayPepbData>(
+      'SELECT * FROM stock_day_pepb_data WHERE code = ? AND date = ?',
+      [code, date],
+    );
+
+    if (!currentData) {
+      throw new Error(`未找到股票 ${code} 在 ${date} 的数据`);
+    }
+
+    const close = currentData.close;
+    const pe = currentData.peTTM;
+    const pb = currentData.pbMRQ;
+
+    // 2. 先查询该股票在 date 之前的最早数据日期，用于边界裁剪
+    const earliestRecord = await this.databaseService.queryOne<{ minDate: string }>(
+      'SELECT MIN(date) as minDate FROM stock_day_pepb_data WHERE code = ? AND date <= ?',
+      [code, date],
+    );
+    const earliestDate = earliestRecord?.minDate || date;
+
+    // 3. 定义各时间区间 (年)
+    const periods = [
+      { period: '1年', years: 1 },
+      { period: '5年', years: 5 },
+      { period: '10年', years: 10 },
+      { period: '15年', years: 15 },
+      { period: '全部', years: -1 }, // -1 表示全部历史
+    ];
+
+    // 解析目标日期
+    const targetDate = new Date(date);
+
+    const percentiles = await Promise.all(
+      periods.map(async ({ period, years }) => {
+        // 计算区间起始日期
+        let startDate: string;
+        if (years === -1) {
+          startDate = earliestDate;
+        } else {
+          const start = new Date(targetDate);
+          start.setFullYear(start.getFullYear() - years);
+          // 再往前推1天，确保包含整年的数据
+          start.setDate(start.getDate() - 1);
+          startDate = start.toISOString().split('T')[0];
+        }
+
+        // 如果计算出的起始日期早于该股票实际最早数据，则用实际最早日期
+        if (startDate < earliestDate) {
+          startDate = earliestDate;
+        }
+
+        // 查询该区间内的数据统计
+        const stats = await this.databaseService.queryOne<{
+          total: number;
+          closeLeCount: number;
+          peLeCount: number;
+          pbLeCount: number;
+        }>(
+          `SELECT
+            COUNT(*) as total,
+            SUM(CASE WHEN close <= ? THEN 1 ELSE 0 END) as closeLeCount,
+            SUM(CASE WHEN peTTM <= ? THEN 1 ELSE 0 END) as peLeCount,
+            SUM(CASE WHEN pbMRQ <= ? THEN 1 ELSE 0 END) as pbLeCount
+          FROM stock_day_pepb_data
+          WHERE code = ? AND date >= ? AND date <= ?`,
+          [close, pe, pb, code, startDate, date],
+        );
+
+        const total = stats?.total || 0;
+
+        return {
+          period,
+          years,
+          closePercentile: total > 0 && close != null
+            ? Math.round(((stats?.closeLeCount || 0) / total) * 100 * 100) / 100
+            : null,
+          pePercentile: total > 0 && pe != null
+            ? Math.round(((stats?.peLeCount || 0) / total) * 100 * 100) / 100
+            : null,
+          pbPercentile: total > 0 && pb != null
+            ? Math.round(((stats?.pbLeCount || 0) / total) * 100 * 100) / 100
+            : null,
+          count: total,
+          actualStartDate: startDate,
+        };
+      }),
+    );
+
+    return {
+      date,
+      code,
+      codeName: currentData.codeName,
+      close,
+      pe,
+      pb,
+      percentiles,
+    };
+  }
+
+  /**
    * 对股票数据进行增强（股息率、EPS、预测股息率、排名）并分页
    * 提取自 findByDate 的公共逻辑
    */
