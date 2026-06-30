@@ -567,7 +567,7 @@ const StockTable = () => {
                             <tr className="bg-gray-50">
                               <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">报告日期</th>
                               <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">股息支付率</th>
-                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">每股股息</th>
+                              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">分红总额</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
