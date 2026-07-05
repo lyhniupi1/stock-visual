@@ -789,6 +789,22 @@ const AllAPbChart = ({ selectedYears }: { selectedYears: number }) => {
 
   const latest = allPbData.length > 0 ? allPbData[allPbData.length - 1] : null;
 
+  // 计算当前值在历史数据中的分位
+  const percentile = useMemo(() => {
+    if (allPbData.length === 0) return null;
+    const values = allPbData.map(d => d.middlePB);
+    const currentValue = allPbData[allPbData.length - 1].middlePB;
+    return calcPercentile(values, currentValue);
+  }, [allPbData]);
+
+  const percentileLevel = percentile !== null
+    ? percentile <= 25 ? '低' : percentile >= 75 ? '高' : '中'
+    : '-';
+
+  const percentileColor = percentile !== null
+    ? percentile <= 25 ? '#10b981' : percentile >= 75 ? '#ef4444' : '#f59e0b'
+    : '#6b7280';
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
       <h3 className="text-lg font-bold mb-4 text-purple-600">
@@ -796,13 +812,22 @@ const AllAPbChart = ({ selectedYears }: { selectedYears: number }) => {
       </h3>
 
       {/* 最新值卡片 */}
-      <div className="grid grid-cols-1 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-purple-50 rounded-lg p-3 text-center">
           <div className="text-xs text-gray-500 mb-1">PB中位数</div>
           <div className="text-lg font-bold text-purple-500">
             {latest ? latest.middlePB.toFixed(2) : '-'}
           </div>
         </div>
+        {percentile !== null && (
+          <div className="bg-gray-50 rounded-lg p-3 text-center">
+            <div className="text-xs text-gray-500 mb-1">历史分位</div>
+            <div className="text-lg font-bold" style={{ color: percentileColor }}>
+              {percentile}%
+              <span className="text-sm ml-1">({percentileLevel})</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
