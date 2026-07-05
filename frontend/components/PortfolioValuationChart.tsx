@@ -464,6 +464,7 @@ const IndexPriceChart = ({ selectedYears }: { selectedYears: number }) => {
         borderColor: '#d1d5db',
         timeVisible: true,
         secondsVisible: false,
+        minBarSpacing: -1,
       },
     });
 
