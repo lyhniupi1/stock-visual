@@ -954,6 +954,37 @@ export async function fetchZz500History(
   }
 }
 
+export interface AllPbData {
+  date: string;
+  middlePB: number;
+  equalWeightAveragePB: number;
+}
+
+/**
+ * 获取全部A股市净率中位数和等权平均数据（根据日期范围）
+ * @param startDate 开始日期 (YYYY-MM-DD)
+ * @param endDate 结束日期 (YYYY-MM-DD)
+ */
+export async function fetchAllPbByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<AllPbData[]> {
+  try {
+    const params = new URLSearchParams();
+    params.append('start', startDate);
+    params.append('end', endDate);
+
+    const response = await fetch(getApiUrl(`/valuation/all-pb?${params.toString()}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch all-pb data by date range:', error);
+    return [];
+  }
+}
+
 /**
  * 获取股债利差数据
  * @param limit 限制返回的数据条数（默认365条）

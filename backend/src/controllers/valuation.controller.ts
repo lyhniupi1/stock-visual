@@ -72,6 +72,19 @@ export class ValuationController {
   }
 
   /**
+   * 获取全部A股市净率中位数和等权平均数据（根据日期范围）
+   * @param startDate 开始日期 (YYYY-MM-DD)
+   * @param endDate 结束日期 (YYYY-MM-DD)
+   */
+  @Get('all-pb')
+  async getAllPbByDateRange(
+    @Query('start') startDate: string,
+    @Query('end') endDate: string,
+  ): Promise<{ date: string; middlePB: number; equalWeightAveragePB: number }[]> {
+    return this.stockService.findAllPbByDateRange(startDate, endDate);
+  }
+
+  /**
    * 获取股债利差数据
    * @param limit 限制返回的数据条数（默认365条，0表示获取所有数据）
    */

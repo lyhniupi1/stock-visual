@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { fetchPortfolioBacktestStatInfo, fetchStockCodes, fetchHushen300ByDateRange, fetchZz500ByDateRange, PortfolioBacktestStatInfo, Hushen300Data } from '@/lib/api';
+import { fetchPortfolioBacktestStatInfo, fetchStockCodes, fetchHushen300ByDateRange, fetchZz500ByDateRange, fetchAllPbByDateRange, PortfolioBacktestStatInfo, Hushen300Data, AllPbData } from '@/lib/api';
 import * as lwc from 'lightweight-charts';
 
 interface ChartConfig {
@@ -615,6 +615,212 @@ const IndexPriceChart = ({ selectedYears }: { selectedYears: number }) => {
   );
 };
 
+/** 全部A股市净率中位数走势图组件 */
+const AllAPbChart = ({ selectedYears }: { selectedYears: number }) => {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [allPbData, setAllPbData] = useState<AllPbData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 根据 selectedYears 计算日期范围
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0];
+    if (selectedYears <= 0) {
+      return { startDate: '1990-01-01', endDate };
+    }
+    const start = new Date(now.getFullYear() - selectedYears, now.getMonth(), now.getDate());
+    const startDate = start.toISOString().split('T')[0];
+    return { startDate, endDate };
+  }, [selectedYears]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await fetchAllPbByDateRange(dateRange.startDate, dateRange.endDate);
+        if (cancelled) return;
+        setAllPbData(result);
+      } catch (err) {
+        console.error('Failed to load all-A PB data:', err);
+        if (!cancelled) setError('无法加载全部A股PB数据');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [dateRange.startDate, dateRange.endDate]);
+
+  useEffect(() => {
+    if (!chartContainerRef.current || allPbData.length === 0) return;
+
+    const container = chartContainerRef.current;
+    const chart = lwc.createChart(container, {
+      width: container.clientWidth,
+      height: 350,
+      layout: {
+        background: { color: '#ffffff' },
+        textColor: '#374151',
+      },
+      grid: {
+        vertLines: { color: '#e5e7eb' },
+        horzLines: { color: '#e5e7eb' },
+      },
+      crosshair: {
+        mode: lwc.CrosshairMode.Normal,
+      },
+      rightPriceScale: {
+        borderColor: '#d1d5db',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      },
+      timeScale: {
+        borderColor: '#d1d5db',
+        timeVisible: true,
+        secondsVisible: false,
+        minBarSpacing: -1,
+      },
+    });
+
+    // 按日期排序去重
+    const sorted = [...allPbData]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .filter((item, index, arr) => index === 0 || item.date !== arr[index - 1].date);
+
+    // middlePB 序列
+    const middlePBData = sorted.map(item => ({
+      time: (new Date(item.date).getTime() / 1000) as any,
+      value: item.middlePB,
+    }));
+
+    const middlePBSeries = chart.addSeries(lwc.LineSeries, {
+      color: '#8b5cf6',
+      lineWidth: 2,
+      title: 'PB中位数',
+      priceFormat: {
+        type: 'price',
+        precision: 2,
+        minMove: 0.01,
+      },
+    });
+    middlePBSeries.setData(middlePBData);
+
+    // 添加 10/30/50/70/90 分位线（基于 middlePB）
+    const sortedValues = middlePBData.map(d => d.value as number).sort((a, b) => a - b);
+    if (sortedValues.length > 0) {
+      const percentileConfigs = [
+        { p: 10, label: 'P10', style: lwc.LineStyle.Dashed, width: 1 as const, color: '#46dd46' },
+        { p: 30, label: 'P30', style: lwc.LineStyle.Dashed, width: 1 as const, color: '#3669c0' },
+        { p: 50, label: 'P50', style: lwc.LineStyle.Solid, width: 2 as const, color: '#9637b3' },
+        { p: 70, label: 'P70', style: lwc.LineStyle.Dashed, width: 1 as const, color: '#a3216d' },
+        { p: 90, label: 'P90', style: lwc.LineStyle.Dashed, width: 1 as const, color: '#c51852' },
+      ];
+      percentileConfigs.forEach(({ p, label, style, width, color }) => {
+        const idx = Math.floor((sortedValues.length - 1) * p / 100);
+        const price = sortedValues[idx];
+        middlePBSeries.createPriceLine({
+          price,
+          color,
+          lineWidth: width,
+          lineStyle: style,
+          axisLabelVisible: true,
+          title: `${label} `,
+        });
+      });
+    }
+
+    // 工具提示
+    const toolTip = document.createElement('div');
+    toolTip.style.cssText = `
+      position: absolute;
+      display: none;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 100;
+    `;
+    container.appendChild(toolTip);
+
+    chart.subscribeCrosshairMove((param: any) => {
+      if (!param.point || !param.time || param.seriesData.size === 0) {
+        toolTip.style.display = 'none';
+        return;
+      }
+
+      const dateStr = typeof param.time === 'string'
+        ? param.time
+        : new Date((param.time as number) * 1000).toISOString().split('T')[0];
+
+      let html = `<div style="font-weight:600;color:#374151;margin-bottom:4px">${dateStr}</div>`;
+
+      const mp = param.seriesData.get(middlePBSeries);
+      if (mp) {
+        html += `<div style="color:#8b5cf6">PB中位数: ${(mp.value as number).toFixed(2)}</div>`;
+      }
+
+      toolTip.style.display = 'block';
+      toolTip.style.left = (param.point.x + 15) + 'px';
+      toolTip.style.top = (param.point.y - 1) + 'px';
+      toolTip.innerHTML = html;
+    });
+
+    // 窗口大小变化时自适应
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, [allPbData]);
+
+  const latest = allPbData.length > 0 ? allPbData[allPbData.length - 1] : null;
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+      <h3 className="text-lg font-bold mb-4 text-purple-600">
+        全部A股市净率中位数
+      </h3>
+
+      {/* 最新值卡片 */}
+      <div className="grid grid-cols-1 gap-3 mb-4">
+        <div className="bg-purple-50 rounded-lg p-3 text-center">
+          <div className="text-xs text-gray-500 mb-1">PB中位数</div>
+          <div className="text-lg font-bold text-purple-500">
+            {latest ? latest.middlePB.toFixed(2) : '-'}
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center py-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-500 text-sm">加载全部A股PB数据...</span>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      ) : (
+        <div ref={chartContainerRef} className="w-full" style={{ position: 'relative' }} />
+      )}
+    </div>
+  );
+};
+
 const RANGE_OPTIONS = [
   { label: '全部', years: 0 },
   { label: '1年', years: 1 },
@@ -712,6 +918,8 @@ const PortfolioValuationChart = () => {
       </div>
 
       <IndexPriceChart selectedYears={selectedYears} />
+
+      <AllAPbChart selectedYears={selectedYears} />
 
       {chartConfigs.map((config) => (
         <SingleChart key={config.dataKey} data={filteredData} config={config} stockNameMap={stockNameMap} />

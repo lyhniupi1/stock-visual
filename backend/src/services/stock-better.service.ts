@@ -854,6 +854,23 @@ export class StockBetterService {
   }
 
   /**
+   * 全部A股市净率中位数和等权平均数据接口
+   */
+  async findAllPbByDateRange(
+    startDate: string,
+    endDate: string,
+  ): Promise<{ date: string; middlePB: number; equalWeightAveragePB: number }[]> {
+    const sql = `
+      SELECT date, middlePB, equalWeightAveragePB
+      FROM stock_a_all_pb
+      WHERE date >= ?
+        AND date <= ?
+      ORDER BY date ASC
+    `;
+    return this.databaseService.query<{ date: string; middlePB: number; equalWeightAveragePB: number }>(sql, [startDate, endDate]);
+  }
+
+  /**
    * 获取股票的股息支付率历史数据
    */
   async getDividendRatioHistory(code: string): Promise<DividendRatioData[]> {
