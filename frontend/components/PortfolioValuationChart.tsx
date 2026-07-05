@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { fetchPortfolioBacktestStatInfo, fetchStockCodes, PortfolioBacktestStatInfo } from '@/lib/api';
+import { fetchPortfolioBacktestStatInfo, fetchStockCodes, fetchHushen300ByDateRange, fetchZz500ByDateRange, PortfolioBacktestStatInfo, Hushen300Data } from '@/lib/api';
 import * as lwc from 'lightweight-charts';
 
 interface ChartConfig {
@@ -381,6 +381,239 @@ const SingleChart = ({ data, config, stockNameMap }: { data: PortfolioBacktestSt
   );
 };
 
+/** 沪深300 & 中证500 历史收盘价走势图组件 */
+const IndexPriceChart = ({ selectedYears }: { selectedYears: number }) => {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [hs300Data, setHs300Data] = useState<Hushen300Data[]>([]);
+  const [zz500Data, setZz500Data] = useState<Hushen300Data[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 根据 selectedYears 计算日期范围
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0];
+    if (selectedYears <= 0) {
+      return { startDate: '1990-01-01', endDate };
+    }
+    const start = new Date(now.getFullYear() - selectedYears, now.getMonth(), now.getDate());
+    const startDate = start.toISOString().split('T')[0];
+    return { startDate, endDate };
+  }, [selectedYears]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [hs300, zz500] = await Promise.all([
+          fetchHushen300ByDateRange(dateRange.startDate, dateRange.endDate),
+          fetchZz500ByDateRange(dateRange.startDate, dateRange.endDate),
+        ]);
+        if (cancelled) return;
+        setHs300Data(hs300);
+        setZz500Data(zz500);
+      } catch (err) {
+        console.error('Failed to load index price data:', err);
+        if (!cancelled) setError('无法加载指数价格数据');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadData();
+    return () => { cancelled = true; };
+  }, [dateRange.startDate, dateRange.endDate]);
+
+  useEffect(() => {
+    if (!chartContainerRef.current || hs300Data.length === 0 || zz500Data.length === 0) return;
+
+    const container = chartContainerRef.current;
+    const chart = lwc.createChart(container, {
+      width: container.clientWidth,
+      height: 350,
+      layout: {
+        background: { color: '#ffffff' },
+        textColor: '#374151',
+      },
+      grid: {
+        vertLines: { color: '#e5e7eb' },
+        horzLines: { color: '#e5e7eb' },
+      },
+      crosshair: {
+        mode: lwc.CrosshairMode.Normal,
+      },
+      // 右轴：沪深300
+      rightPriceScale: {
+        borderColor: '#ef4444',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      },
+      // 左轴：中证500
+      leftPriceScale: {
+        visible: true,
+        borderColor: '#3b82f6',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      },
+      timeScale: {
+        borderColor: '#d1d5db',
+        timeVisible: true,
+        secondsVisible: false,
+      },
+    });
+
+    // 沪深300 序列（右轴）
+    const hs300Sorted = [...hs300Data]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .filter((item, index, arr) => index === 0 || item.date !== arr[index - 1].date);
+
+    const hs300ChartData = hs300Sorted.map(item => ({
+      time: (new Date(item.date).getTime() / 1000) as any,
+      value: item.close,
+    }));
+
+    const hs300Series = chart.addSeries(lwc.LineSeries, {
+      priceScaleId: 'right',
+      color: '#ef4444',
+      lineWidth: 2,
+      title: '沪深300',
+      priceFormat: {
+        type: 'price',
+        precision: 2,
+        minMove: 0.01,
+      },
+    });
+    hs300Series.setData(hs300ChartData);
+
+    // 中证500 序列（左轴）
+    const zz500Sorted = [...zz500Data]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .filter((item, index, arr) => index === 0 || item.date !== arr[index - 1].date);
+
+    const zz500ChartData = zz500Sorted.map(item => ({
+      time: (new Date(item.date).getTime() / 1000) as any,
+      value: item.close,
+    }));
+
+    const zz500Series = chart.addSeries(lwc.LineSeries, {
+      priceScaleId: 'left',
+      color: '#3b82f6',
+      lineWidth: 2,
+      title: '中证500',
+      priceFormat: {
+        type: 'price',
+        precision: 2,
+        minMove: 0.01,
+      },
+    });
+    zz500Series.setData(zz500ChartData);
+
+    // 工具提示
+    const toolTip = document.createElement('div');
+    toolTip.style.cssText = `
+      position: absolute;
+      display: none;
+      padding: 8px 12px;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 100;
+    `;
+    container.appendChild(toolTip);
+
+    chart.subscribeCrosshairMove((param: any) => {
+      if (!param.point || !param.time || param.seriesData.size === 0) {
+        toolTip.style.display = 'none';
+        return;
+      }
+
+      const dateStr = typeof param.time === 'string'
+        ? param.time
+        : new Date((param.time as number) * 1000).toISOString().split('T')[0];
+
+      let html = `<div style="font-weight:600;color:#374151;margin-bottom:4px">${dateStr}</div>`;
+
+      const hs300Point = param.seriesData.get(hs300Series);
+      if (hs300Point) {
+        const v = (hs300Point.value as number).toFixed(2);
+        html += `<div style="color:#ef4444">沪深300: ${v}</div>`;
+      }
+
+      const zz500Point = param.seriesData.get(zz500Series);
+      if (zz500Point) {
+        const v = (zz500Point.value as number).toFixed(2);
+        html += `<div style="color:#3b82f6">中证500: ${v}</div>`;
+      }
+
+      toolTip.style.display = 'block';
+      toolTip.style.left = (param.point.x + 15) + 'px';
+      toolTip.style.top = (param.point.y - 1) + 'px';
+      toolTip.innerHTML = html;
+    });
+
+    // 窗口大小变化时自适应
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, [hs300Data, zz500Data]);
+
+  const latestHs300 = hs300Data.length > 0 ? hs300Data[hs300Data.length - 1] : null;
+  const latestZz500 = zz500Data.length > 0 ? zz500Data[zz500Data.length - 1] : null;
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+      <h3 className="text-lg font-bold mb-4 text-gray-800">
+        沪深300 & 中证500 历史收盘价
+      </h3>
+
+      {/* 最新值卡片 */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-red-50 rounded-lg p-3 text-center">
+          <div className="text-xs text-gray-500 mb-1">沪深300</div>
+          <div className="text-lg font-bold text-red-500">
+            {latestHs300 ? latestHs300.close.toFixed(2) : '-'}
+          </div>
+        </div>
+        <div className="bg-blue-50 rounded-lg p-3 text-center">
+          <div className="text-xs text-gray-500 mb-1">中证500</div>
+          <div className="text-lg font-bold text-blue-500">
+            {latestZz500 ? latestZz500.close.toFixed(2) : '-'}
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center py-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-500 text-sm">加载指数数据...</span>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      ) : (
+        <div ref={chartContainerRef} className="w-full" style={{ position: 'relative' }} />
+      )}
+    </div>
+  );
+};
+
 const RANGE_OPTIONS = [
   { label: '全部', years: 0 },
   { label: '1年', years: 1 },
@@ -476,6 +709,8 @@ const PortfolioValuationChart = () => {
           </button>
         ))}
       </div>
+
+      <IndexPriceChart selectedYears={selectedYears} />
 
       {chartConfigs.map((config) => (
         <SingleChart key={config.dataKey} data={filteredData} config={config} stockNameMap={stockNameMap} />

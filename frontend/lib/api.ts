@@ -892,6 +892,69 @@ export async function fetchHushen300History(
 }
 
 /**
+ * 获取中证500指数数据（根据日期范围）
+ * @param startDate 开始日期 (YYYY-MM-DD)
+ * @param endDate 结束日期 (YYYY-MM-DD)
+ */
+export async function fetchZz500ByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<Hushen300Data[]> {
+  try {
+    const params = new URLSearchParams();
+    params.append('start', startDate);
+    params.append('end', endDate);
+
+    const response = await fetch(getApiUrl(`/valuation/zz500?${params.toString()}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch zz500 data by date range:', error);
+    return [];
+  }
+}
+
+/**
+ * 获取中证500指数最新数据
+ */
+export async function fetchLatestZz500Data(): Promise<Hushen300Data | null> {
+  try {
+    const response = await fetch(getApiUrl('/valuation/zz500/latest'));
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch latest zz500 data:', error);
+    return null;
+  }
+}
+
+/**
+ * 获取中证500指数历史数据
+ * @param limit 限制返回的数据条数（默认365条）
+ */
+export async function fetchZz500History(
+  limit: number = 365
+): Promise<Hushen300Data[]> {
+  try {
+    const response = await fetch(getApiUrl(`/valuation/zz500/history?limit=${limit}`));
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch zz500 history:', error);
+    return [];
+  }
+}
+
+/**
  * 获取股债利差数据
  * @param limit 限制返回的数据条数（默认365条）
  */

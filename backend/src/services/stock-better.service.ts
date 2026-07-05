@@ -4,6 +4,7 @@ import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
 import { IndexValuationData } from '../entities/index-valuation-data.entity';
 import { Hushen300 } from '../entities/hushen300.entity';
+import { Zz500 } from '../entities/zz500.entity';
 import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
 
 // 定义数据库查询返回的股票数据接口（与实体兼容）
@@ -800,6 +801,51 @@ export class StockBetterService {
       LIMIT ?
     `;
     const recentData = await this.databaseService.query<Hushen300>(sql, [limit]);
+
+    // 按升序排序返回
+    return recentData.sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }
+
+  /**
+   * 根据日期范围查询中证500指数数据
+   */
+  async findZz500ByDateRange(
+    startDate: string,
+    endDate: string,
+  ): Promise<Zz500[]> {
+    const sql = `
+      SELECT * FROM zz500
+      WHERE date >= ?
+        AND date <= ?
+      ORDER BY date ASC
+    `;
+    return this.databaseService.query<Zz500>(sql, [startDate, endDate]);
+  }
+
+  /**
+   * 获取中证500指数最新数据
+   */
+  async getLatestZz500Data(): Promise<Zz500 | null> {
+    const sql = `
+      SELECT * FROM zz500
+      ORDER BY date DESC
+      LIMIT 1
+    `;
+    return this.databaseService.queryOne<Zz500>(sql);
+  }
+
+  /**
+   * 获取中证500指数历史数据（按日期降序）
+   */
+  async getZz500History(limit: number = 365): Promise<Zz500[]> {
+    const sql = `
+      SELECT * FROM zz500
+      ORDER BY date DESC
+      LIMIT ?
+    `;
+    const recentData = await this.databaseService.query<Zz500>(sql, [limit]);
 
     // 按升序排序返回
     return recentData.sort((a, b) =>
