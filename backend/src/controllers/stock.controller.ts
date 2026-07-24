@@ -4,6 +4,7 @@ import { StockDayPepbData } from '../entities/stock-day-pepb-data.entity';
 import { StockBonusData } from '../entities/stock-bonus-data.entity';
 import { IndexValuationData } from '../entities/index-valuation-data.entity';
 import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
+import { StockIndustryData } from '../entities/stock-industry-data.entity';
 
 @Controller('api/stocks')
 export class StockController {
@@ -25,6 +26,14 @@ export class StockController {
     @Query('limit') limit: string = '20',
   ): Promise<{ code: string; codeName: string }[]> {
     return this.stockService.searchStocks(query, parseInt(limit, 10));
+  }
+
+  /**
+   * 获取所有股票行业分类数据
+   */
+  @Get('industry-data')
+  async getIndustryData(): Promise<StockIndustryData[]> {
+    return this.stockService.getAllIndustryData();
   }
 
   @Get(':code')

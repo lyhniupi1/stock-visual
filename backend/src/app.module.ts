@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { StockDayPepbData } from './entities/stock-day-pepb-data.entity';
 import { StockBonusData } from './entities/stock-bonus-data.entity';
+import { StockIndustryData } from './entities/stock-industry-data.entity';
 import { Portfolio } from './entities/portfolio.entity';
 import { StockController } from './controllers/stock.controller';
 import { PortfolioController } from './controllers/portfolio.controller';
@@ -23,7 +24,7 @@ import { PortfolioBacktestService } from './services/portfolio-backtest.service'
       synchronize: process.env.NODE_ENV !== 'production', // 开发环境自动同步，生产环境设为false
       logging: process.env.NODE_ENV !== 'production',
     }),
-    TypeOrmModule.forFeature([StockDayPepbData, StockBonusData, Portfolio]),
+    TypeOrmModule.forFeature([StockDayPepbData, StockBonusData, StockIndustryData, Portfolio]),
   ],
   controllers: [AppController, StockController, PortfolioController, ValuationController, PortfolioBacktestController],
   providers: [AppService, PortfolioService, DatabaseService, StockBetterService, PortfolioBacktestService],

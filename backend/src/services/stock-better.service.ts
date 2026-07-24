@@ -6,6 +6,7 @@ import { IndexValuationData } from '../entities/index-valuation-data.entity';
 import { Hushen300 } from '../entities/hushen300.entity';
 import { Zz500 } from '../entities/zz500.entity';
 import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
+import { StockIndustryData } from '../entities/stock-industry-data.entity';
 
 // 定义数据库查询返回的股票数据接口（与实体兼容）
 export interface StockDayPepbDataRecord extends StockDayPepbData {
@@ -1059,6 +1060,17 @@ export class StockBetterService {
       eps4: item.eps4,
       pe4: item.pe4
     }));
+  }
+
+  /**
+   * 获取所有股票行业分类数据（全量查询）
+   */
+  async getAllIndustryData(): Promise<StockIndustryData[]> {
+    const sql = `
+      SELECT * FROM stock_industry_data
+      ORDER BY code ASC
+    `;
+    return this.databaseService.query<StockIndustryData>(sql);
   }
 
   /**
