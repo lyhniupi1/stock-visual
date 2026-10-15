@@ -7,6 +7,7 @@ import { Hushen300 } from '../entities/hushen300.entity';
 import { Zz500 } from '../entities/zz500.entity';
 import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
 import { StockIndustryData } from '../entities/stock-industry-data.entity';
+import { EmStockAnnualIndicator } from '../entities/em-stock-annual-indicator.entity';
 
 // 定义数据库查询返回的股票数据接口（与实体兼容）
 export interface StockDayPepbDataRecord extends StockDayPepbData {
@@ -201,10 +202,6 @@ export class StockBetterService {
       };
     }
 
-    // 分离PE/PB为负数的股票
-    const negativePEStocks = allStocks.filter(stock => (stock.peTTM || 0) < 0);
-    const negativePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) < 0);
-    
     // 正数PE股票（用于排名）
     const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
     // 正数PB股票（用于排名）
@@ -872,6 +869,19 @@ export class StockBetterService {
   }
 
   /**
+   * 将股票代码统一为本地格式 "sh.600000" / "sz.000001"
+   * （em_stock_annual_indicator 等表使用该格式）
+   */
+  private normalizeToLocalCode(code: string): string {
+    if (!code) return '';
+    const matched = /^(\d{6})\.(SH|SZ|sh|sz)$/.exec(code);
+    if (matched) {
+      return `${matched[2].toLowerCase()}.${matched[1]}`;
+    }
+    return code;
+  }
+
+  /**
    * 获取股票的股息支付率历史数据
    */
   async getDividendRatioHistory(code: string): Promise<DividendRatioData[]> {
@@ -942,6 +952,54 @@ export class StockBetterService {
       dividendImple: item.dividendImple,
       parentNetProfit: item.parentNetProfit
     };
+  }
+
+  /**
+   * 获取股票的年报核心指标（ROE 等），数据来自 em_stock_annual_indicator 表
+   * 默认返回最近 5 个年报，按报告期倒序
+   */
+  async getAnnualIndicatorHistory(
+    code: string,
+    limit: number = 5,
+  ): Promise<EmStockAnnualIndicator[]> {
+    const localCode = this.normalizeToLocalCode(code);
+
+    const sql = `
+      SELECT
+        code,
+        codeName,
+        REPORT_DATE as reportDate,
+        REPORT_DATE_NAME as reportDateName,
+        NOTICE_DATE as noticeDate,
+        CAST(EPSJB AS REAL) as eps,
+        CAST(BPS AS REAL) as bps,
+        CAST(ROEJQ AS REAL) as roeJq,
+        CAST(ROEKCJQ AS REAL) as roeKcjq,
+        CAST(ROIC AS REAL) as roic,
+        CAST(XSMLL AS REAL) as grossMargin,
+        CAST(XSJLL AS REAL) as netMargin,
+        CAST(ZCFZL AS REAL) as debtRatio,
+        CAST(PARENTNETPROFIT AS REAL) as parentNetProfit,
+        CAST(TOTALOPERATEREVE AS REAL) as totalOperateRevenue,
+        CAST(TOTALOPERATEREVETZ AS REAL) as revenueYoy,
+        CAST(PARENTNETPROFITTZ AS REAL) as netProfitYoy
+      FROM em_stock_annual_indicator
+      WHERE code = ?
+      ORDER BY REPORT_DATE DESC
+      LIMIT ?
+    `;
+
+    const rows = await this.databaseService.query<EmStockAnnualIndicator>(sql, [
+      localCode,
+      limit,
+    ]);
+
+    return rows.map((row) => ({
+      ...row,
+      codeName: row.codeName || '',
+      reportDateName: row.reportDateName || '',
+      noticeDate: row.noticeDate ?? null,
+    }));
   }
 
   /**
@@ -1339,10 +1397,6 @@ export class StockBetterService {
     pageSize: number;
     totalPages: number;
   }> {
-    // 分离PE/PB为负数的股票
-    const negativePEStocks = allStocks.filter(stock => (stock.peTTM || 0) < 0);
-    const negativePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) < 0);
-
     // 正数PE股票（用于排名）
     const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
     // 正数PB股票（用于排名）

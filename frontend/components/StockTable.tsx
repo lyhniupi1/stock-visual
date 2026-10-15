@@ -8,6 +8,8 @@ import {
 	type PercentileData,
 	fetchDividendRatioHistory,
 	type DividendRatioData,
+	fetchAnnualIndicatorHistory,
+	type AnnualIndicatorData,
 } from "@/lib/api";
 
 interface PaginationInfo {
@@ -33,12 +35,14 @@ const StockTable = () => {
 		loading: boolean;
 		data: PercentileData | null;
 		dividendRatio: DividendRatioData[];
+		annualIndicator: AnnualIndicatorData[];
 		error: string | null;
 	}>({
 		visible: false,
 		loading: false,
 		data: null,
 		dividendRatio: [],
+		annualIndicator: [],
 		error: null,
 	});
 
@@ -175,7 +179,18 @@ const StockTable = () => {
 	};
 
 	const handleViewStock = (code: string, name: string) => {
-		const url = `/stocks/${code}?name=${encodeURIComponent(name)}`;
+		// 始终使用站内相对路径，且股票代码仅允许字母/数字/点，避免被构造成外部 URL
+		const safeCode = String(code ?? "").trim();
+		if (!/^[0-9A-Za-z.]+$/.test(safeCode)) {
+			console.warn("非法股票代码，已忽略跳转:", code);
+			return;
+		}
+		const url = `/stocks/${encodeURIComponent(safeCode)}?name=${encodeURIComponent(name)}`;
+		// 仅允许站内相对路径，防止开放重定向（//evil.com 会被浏览器当作协议相对 URL）
+		if (!url.startsWith("/") || url.startsWith("//")) {
+			console.warn("非站内路径，已忽略跳转:", url);
+			return;
+		}
 		window.open(url, "_blank", "noopener,noreferrer");
 	};
 
@@ -185,12 +200,14 @@ const StockTable = () => {
 			loading: true,
 			data: null,
 			dividendRatio: [],
+			annualIndicator: [],
 			error: null,
 		});
 		try {
-			const [data, dividendRatio] = await Promise.all([
+			const [data, dividendRatio, annualIndicator] = await Promise.all([
 				fetchPercentileData(code, selectedDate),
 				fetchDividendRatioHistory(code),
+				fetchAnnualIndicatorHistory(code),
 			]);
 			// 只保留近5年的数据
 			const fiveYearsAgo = new Date();
@@ -203,14 +220,17 @@ const StockTable = () => {
 				loading: false,
 				data,
 				dividendRatio: recentDividendRatio,
+				annualIndicator: annualIndicator || [],
 				error: null,
 			});
 		} catch (err) {
+			console.error(`获取 ${name}(${code}) 的历史分位数据失败:`, err);
 			setPercentileModal({
 				visible: true,
 				loading: false,
 				data: null,
 				dividendRatio: [],
+				annualIndicator: [],
 				error: `获取 ${name}(${code}) 的历史分位数据失败`,
 			});
 		}
@@ -222,6 +242,7 @@ const StockTable = () => {
 			loading: false,
 			data: null,
 			dividendRatio: [],
+			annualIndicator: [],
 			error: null,
 		});
 	};
@@ -838,6 +859,90 @@ const StockTable = () => {
 											</div>
 										</div>
 									)}
+
+									{/* 近5年年报ROE（数据来源：em_stock_annual_indicator） */}
+									<div className="mt-6">
+										<h4 className="text-sm font-bold text-gray-700 mb-3">
+											近5年年报ROE
+											<span className="ml-2 text-xs font-normal text-gray-400">
+												数据来源：em_stock_annual_indicator
+											</span>
+										</h4>
+										{percentileModal.annualIndicator.length > 0 ? (
+											<div className="overflow-x-auto">
+												<table className="min-w-full divide-y divide-gray-200 border rounded-lg">
+													<thead>
+														<tr className="bg-gray-50">
+															<th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+																报告期
+															</th>
+															<th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+																ROE(加权)
+															</th>
+															<th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+																ROE(扣非)
+															</th>
+															<th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+																ROIC
+															</th>
+															<th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+																归母净利润
+															</th>
+															<th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+																每股净资产
+															</th>
+															<th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+																资产负债率
+															</th>
+														</tr>
+													</thead>
+													<tbody className="bg-white divide-y divide-gray-200">
+														{percentileModal.annualIndicator.map(
+															(item, idx, list) => (
+																<tr
+																	key={item.reportDate}
+																	className="hover:bg-purple-50"
+																>
+																	<td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
+																		{item.reportDateName || item.reportDate}
+																	</td>
+																	<td className="px-4 py-2 text-right">
+																		<RoeValue
+																			value={item.roeJq}
+																			previous={
+																				list[idx + 1]
+																					? list[idx + 1].roeJq
+																					: null
+																			}
+																		/>
+																	</td>
+																	<td className="px-4 py-2 text-sm text-right font-medium text-gray-700">
+																		{formatRatio(item.roeKcjq)}
+																	</td>
+																	<td className="px-4 py-2 text-sm text-right text-gray-700">
+																		{formatRatio(item.roic)}
+																	</td>
+																	<td className="px-4 py-2 text-sm text-right text-gray-700">
+																		{formatYi(item.parentNetProfit)}
+																	</td>
+																	<td className="px-4 py-2 text-sm text-right text-gray-700">
+																		{item.bps != null ? item.bps.toFixed(2) : "N/A"}
+																	</td>
+																	<td className="px-4 py-2 text-sm text-right text-gray-700">
+																		{formatRatio(item.debtRatio)}
+																	</td>
+																</tr>
+															),
+														)}
+													</tbody>
+												</table>
+											</div>
+										) : (
+											<div className="text-sm text-gray-400">
+												暂无该股票的年报指标数据
+											</div>
+										)}
+									</div>
 								</div>
 							)}
 						</div>
@@ -879,6 +984,54 @@ function PercentileBadge({ value }: { value: number | null }) {
 			className={`inline-block px-3 py-1 rounded-full text-sm font-bold ${colorClass}`}
 		>
 			{value.toFixed(1)}%
+		</span>
+	);
+}
+
+/** 百分比数值格式化（如 12.34%） */
+function formatRatio(value: number | null): string {
+	return value != null ? `${value.toFixed(2)}%` : "N/A";
+}
+
+/** 金额格式化为亿元 */
+function formatYi(value: number | null): string {
+	return value != null ? `${(value / 1e8).toFixed(2)}亿` : "N/A";
+}
+
+/**
+ * 年报 ROE 数值组件
+ * 同时展示绝对值与较上一年的变化（单位：百分点）
+ */
+function RoeValue({
+	value,
+	previous,
+}: {
+	value: number | null;
+	previous: number | null;
+}) {
+	if (value == null) {
+		return <span className="text-gray-400">N/A</span>;
+	}
+
+	const colorClass =
+		value >= 15
+			? "text-green-600"
+			: value >= 8
+				? "text-yellow-600"
+				: "text-red-600";
+	const delta = previous != null ? value - previous : null;
+
+	return (
+		<span className="inline-flex flex-col items-end leading-tight">
+			<span className={`font-bold ${colorClass}`}>{value.toFixed(2)}%</span>
+			{delta != null && (
+				<span
+					className={`text-[10px] ${delta >= 0 ? "text-green-500" : "text-red-500"}`}
+				>
+					{delta >= 0 ? "▲" : "▼"}
+					{Math.abs(delta).toFixed(2)}
+				</span>
+			)}
 		</span>
 	);
 }

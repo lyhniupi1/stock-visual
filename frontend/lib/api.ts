@@ -789,6 +789,65 @@ export async function fetchDividendRatioHistory(code: string): Promise<DividendR
 }
 
 /**
+ * 年报主要指标数据接口（em_stock_annual_indicator）
+ */
+export interface AnnualIndicatorData {
+  code: string;
+  codeName: string;
+  reportDate: string;
+  reportDateName: string;
+  noticeDate: string | null;
+  /** 基本每股收益 */
+  eps: number | null;
+  /** 每股净资产 */
+  bps: number | null;
+  /** 加权净资产收益率(%) */
+  roeJq: number | null;
+  /** 扣非加权净资产收益率(%) */
+  roeKcjq: number | null;
+  /** 投入资本回报率(%) */
+  roic: number | null;
+  /** 销售毛利率(%) */
+  grossMargin: number | null;
+  /** 销售净利率(%) */
+  netMargin: number | null;
+  /** 资产负债率(%) */
+  debtRatio: number | null;
+  /** 归母净利润(元) */
+  parentNetProfit: number | null;
+  /** 营业总收入(元) */
+  totalOperateRevenue: number | null;
+  /** 营业总收入同比增长(%) */
+  revenueYoy: number | null;
+  /** 归母净利润同比增长(%) */
+  netProfitYoy: number | null;
+}
+
+/**
+ * 获取股票的年报主要指标（ROE 等）历史数据
+ * @param code 股票代码（如 sh.600000）
+ * @param limit 返回的年报数量，默认 5
+ * @returns 年报指标数据列表（按报告期倒序）
+ */
+export async function fetchAnnualIndicatorHistory(
+  code: string,
+  limit: number = 5,
+): Promise<AnnualIndicatorData[]> {
+  try {
+    const response = await fetch(
+      getApiUrl(`/stocks/${code}/annual-indicator?limit=${limit}`),
+    );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to fetch annual indicator data:', error);
+    return [];
+  }
+}
+
+/**
  * 获取最新的股息支付率数据
  * @param code 股票代码
  * @returns 最新股息支付率数据或null

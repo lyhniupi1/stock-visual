@@ -5,6 +5,7 @@ import { StockBonusData } from '../entities/stock-bonus-data.entity';
 import { IndexValuationData } from '../entities/index-valuation-data.entity';
 import { DividendRatioData } from '../entities/eastmoney-dividend-ratio.entity';
 import { StockIndustryData } from '../entities/stock-industry-data.entity';
+import { EmStockAnnualIndicator } from '../entities/em-stock-annual-indicator.entity';
 
 @Controller('api/stocks')
 export class StockController {
@@ -216,6 +217,18 @@ export class StockController {
     }[];
   }> {
     return this.stockService.getPercentileData(code, date);
+  }
+
+  @Get(':code/annual-indicator')
+  async getAnnualIndicatorHistory(
+    @Param('code') code: string,
+    @Query('limit') limit: string = '5',
+  ): Promise<EmStockAnnualIndicator[]> {
+    const parsedLimit = Number.parseInt(limit, 10);
+    return this.stockService.getAnnualIndicatorHistory(
+      code,
+      Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 5,
+    );
   }
 
   @Get(':code/dividend-ratio')
