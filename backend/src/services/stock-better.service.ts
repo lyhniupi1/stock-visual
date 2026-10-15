@@ -33,7 +33,7 @@ export class StockBetterService {
    */
   private convertToEastmoneyCode(code: string): string {
     if (!code) return '';
-    
+
     // 格式: "sh.600000" 或 "sz.000001"
     const parts = code.split('.');
     if (parts.length === 2) {
@@ -41,7 +41,7 @@ export class StockBetterService {
       const stockCode = parts[1]; // "600000"
       return `${stockCode}.${exchange}`;
     }
-    
+
     // 如果已经是 "600000.SH" 格式，直接返回
     return code;
   }
@@ -51,7 +51,7 @@ export class StockBetterService {
    */
   private convertFromEastmoneyCode(secucode: string): string {
     if (!secucode) return '';
-    
+
     // 格式: "600000.SH" 或 "000001.SZ"
     const parts = secucode.split('.');
     if (parts.length === 2) {
@@ -59,7 +59,7 @@ export class StockBetterService {
       const exchange = parts[1].toLowerCase(); // "sh" 或 "sz"
       return `${exchange}.${stockCode}`;
     }
-    
+
     // 如果已经是 "sh.600000" 格式，直接返回
     return secucode;
   }
@@ -79,7 +79,10 @@ export class StockBetterService {
   /**
    * 根据股票代码查询数据
    */
-  async findByCode(code: string, limit: number = 100): Promise<StockDayPepbData[]> {
+  async findByCode(
+    code: string,
+    limit: number = 100,
+  ): Promise<StockDayPepbData[]> {
     const sql = `
       SELECT * FROM stock_day_pepb_data 
       WHERE code = ? 
@@ -104,7 +107,11 @@ export class StockBetterService {
         AND date <= ? 
       ORDER BY date ASC
     `;
-    return this.databaseService.query<StockDayPepbData>(sql, [code, startDate, endDate]);
+    return this.databaseService.query<StockDayPepbData>(sql, [
+      code,
+      startDate,
+      endDate,
+    ]);
   }
 
   /**
@@ -118,8 +125,8 @@ export class StockBetterService {
       ORDER BY code
     `;
     const results = await this.databaseService.query<any>(sql);
-    
-    return results.map(row => ({
+
+    return results.map((row) => ({
       code: row.code,
       codeName: row.codeName,
     }));
@@ -128,7 +135,10 @@ export class StockBetterService {
   /**
    * 搜索股票（模糊匹配代码或名称）
    */
-  async searchStocks(query: string, limit: number = 20): Promise<{ code: string; codeName: string }[]> {
+  async searchStocks(
+    query: string,
+    limit: number = 20,
+  ): Promise<{ code: string; codeName: string }[]> {
     if (!query.trim()) {
       return [];
     }
@@ -151,9 +161,13 @@ export class StockBetterService {
       ORDER BY code
       LIMIT ?
     `;
-    const results = await this.databaseService.query<any>(sql, [searchTerm, searchTerm, limit]);
-    
-    return results.map(row => ({
+    const results = await this.databaseService.query<any>(sql, [
+      searchTerm,
+      searchTerm,
+      limit,
+    ]);
+
+    return results.map((row) => ({
       code: row.code,
       codeName: row.codeName,
     }));
@@ -176,9 +190,9 @@ export class StockBetterService {
    * 根据日期查询股票数据（带分页和排名）
    */
   async findByDate(
-    date: string, 
-    page: number = 1, 
-    pageSize: number = 20
+    date: string,
+    page: number = 1,
+    pageSize: number = 20,
   ): Promise<{
     data: StockDayPepbDataRecord[];
     total: number;
@@ -189,7 +203,7 @@ export class StockBetterService {
     // 首先获取该日期的所有股票数据
     const allStocks = await this.databaseService.query<StockDayPepbData>(
       'SELECT * FROM stock_day_pepb_data WHERE date = ?',
-      [date]
+      [date],
     );
 
     if (allStocks.length === 0) {
@@ -203,25 +217,35 @@ export class StockBetterService {
     }
 
     // 正数PE股票（用于排名）
-    const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
+    const positivePEStocks = allStocks.filter(
+      (stock) => (stock.peTTM || 0) >= 0,
+    );
     // 正数PB股票（用于排名）
-    const positivePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) >= 0);
+    const positivePBStocks = allStocks.filter(
+      (stock) => (stock.pbMRQ || 0) >= 0,
+    );
 
     // 计算PE排名（只对正数PE排序）
-    const peSorted = [...positivePEStocks].sort((a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity));
+    const peSorted = [...positivePEStocks].sort(
+      (a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity),
+    );
     // 计算PB排名（只对正数PB排序）
-    const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
+    const pbSorted = [...positivePBStocks].sort(
+      (a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity),
+    );
 
     // 计算每个股票的股息率排名
     // 根据查询日期动态确定分红统计年份范围
     const queryDate = new Date(date);
     const queryYear = queryDate.getFullYear();
     const queryMonth = queryDate.getMonth() + 1; // 月份从0开始，所以要+1
-    console.log(queryYear)
-    console.log(queryMonth)
+    console.log(queryYear);
+    console.log(queryMonth);
     // 判断日期在当年上半年还是下半年，确定统计年份范围
     const isSecondHalfYear = queryMonth >= 5; // 7-12月为下半年
-    const dividendYearThreshold = isSecondHalfYear ? queryYear - 1 : queryYear - 2;
+    const dividendYearThreshold = isSecondHalfYear
+      ? queryYear - 1
+      : queryYear - 2;
 
     // 获取所有股票的分红汇总数据（根据动态年份阈值）
     const bonusSummarySql = `
@@ -233,10 +257,15 @@ export class StockBetterService {
       WHERE dateStr > ?
       GROUP BY code
     `;
-    const bonusSummaries = this.databaseService.query<any>(bonusSummarySql, [dividendYearThreshold.toString()]);
+    const bonusSummaries = this.databaseService.query<any>(bonusSummarySql, [
+      dividendYearThreshold.toString(),
+    ]);
 
     // 创建分红汇总映射
-    const bonusMap = new Map<string, { totalAmount: number; totalStockDividend: number }>();
+    const bonusMap = new Map<
+      string,
+      { totalAmount: number; totalStockDividend: number }
+    >();
     for (const summary of bonusSummaries) {
       bonusMap.set(summary.code, {
         totalAmount: summary.totalAmount || 0,
@@ -245,14 +274,15 @@ export class StockBetterService {
     }
 
     // 计算股息率并添加到股票对象
-    const stocksWithDividendYield = allStocks.map(stock => {
+    const stocksWithDividendYield = allStocks.map((stock) => {
       const bonus = bonusMap.get(stock.code);
       const closePrice = stock.close || 0;
       let dividendYield = 0;
 
       if (bonus && closePrice > 0) {
         // 股息率 = 每股分红金额 / 股价 + 每股送股
-        dividendYield = (bonus.totalAmount / closePrice) + (bonus.totalStockDividend || 0);
+        dividendYield =
+          bonus.totalAmount / closePrice + (bonus.totalStockDividend || 0);
       }
 
       return {
@@ -261,7 +291,6 @@ export class StockBetterService {
       };
     });
 
-
     // 1. 查询date当年所有股票的EPS，得到一个map
     const epsQueryYear = queryYear.toString();
     const epsSql = `
@@ -269,10 +298,10 @@ export class StockBetterService {
       FROM eastmoney_eps_predict
       WHERE YEAR = ?
     `;
-    const epsResults = await this.databaseService.query<any>(epsSql, [epsQueryYear]);
+    const epsResults = await this.databaseService.query<any>(epsSql, [
+      epsQueryYear,
+    ]);
 
-    
-    
     // 创建EPS映射（key: 转换后的代码格式 "sh.600000"）
     const epsMap = new Map<string, number>();
     for (const row of epsResults) {
@@ -289,19 +318,21 @@ export class StockBetterService {
     const threeYearsAgo = new Date(queryDate);
     threeYearsAgo.setFullYear(queryYear - 3);
     const startDateStr = threeYearsAgo.toISOString().split('T')[0];
-    
+
     // 结束日期为查询日期（date）
     const endDateStr = date;
 
-    
     const dividendRatioSql = `
       SELECT SECUCODE, avg(DIVIDEND_PAY_IMPLE) as avgDividendPayRatio
       FROM eastmoney_dividend_ratio
       WHERE REPORT_DATE >= ? and REPORT_DATE < ?
       GROUP BY SECUCODE
     `;
-    const dividendRatioResults = await this.databaseService.query<any>(dividendRatioSql, [startDateStr, endDateStr]);
-    
+    const dividendRatioResults = await this.databaseService.query<any>(
+      dividendRatioSql,
+      [startDateStr, endDateStr],
+    );
+
     // 创建股息支付率映射（key: 转换后的代码格式 "sh.600000"）
     const dividendRatioMap = new Map<string, number>();
     for (const row of dividendRatioResults) {
@@ -313,9 +344,8 @@ export class StockBetterService {
       }
     }
 
-
     // 3. 计算预测股息率并添加到股票对象
-    const stocksWithPredictDividend = stocksWithDividendYield.map(stock => {
+    const stocksWithPredictDividend = stocksWithDividendYield.map((stock) => {
       const eps = epsMap.get(stock.code) || 0;
       const dividendPayRatio = dividendRatioMap.get(stock.code) || 0;
       const closePrice = stock.close || 0;
@@ -336,7 +366,9 @@ export class StockBetterService {
     });
 
     // 对股息率进行排序（降序，股息率越高越好）
-    const dvSorted = [...stocksWithPredictDividend].sort((a, b) => b.dividendYield - a.dividendYield);
+    const dvSorted = [...stocksWithPredictDividend].sort(
+      (a, b) => b.dividendYield - a.dividendYield,
+    );
 
     // 创建股息率排名映射
     const dvRankMap = new Map<string, number>();
@@ -346,13 +378,13 @@ export class StockBetterService {
 
     // 创建针对 predictDividendRatio 的排名映射
     // 对预测股息率进行排序（降序，预测股息率越高越好）
-    const pdSorted = [...stocksWithPredictDividend].sort((a, b) => b.predictDividendRatio - a.predictDividendRatio);
+    const pdSorted = [...stocksWithPredictDividend].sort(
+      (a, b) => b.predictDividendRatio - a.predictDividendRatio,
+    );
     const pdRankMap = new Map<string, number>();
     pdSorted.forEach((stock, index) => {
       pdRankMap.set(stock.code, index + 1);
     });
-
-
 
     // 创建排名映射
     const peRankMap = new Map<string, number>();
@@ -369,15 +401,27 @@ export class StockBetterService {
     });
 
     // 计算综合排名（PE排名 + PB排名 + 股息率排名 + 预测股息率排名）
-    const stocksWithRank = stocksWithPredictDividend.map(stock => {
+    const stocksWithRank = stocksWithPredictDividend.map((stock) => {
       // PE为负数的排名设为9999
-      const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
+      const peRank =
+        (stock.peTTM || 0) < 0
+          ? 9999
+          : peRankMap.get(stock.code) || positivePEStocks.length + 1;
       // PB为负数的排名设为9999
-      const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
+      const pbRank =
+        (stock.pbMRQ || 0) < 0
+          ? 9999
+          : pbRankMap.get(stock.code) || positivePBStocks.length + 1;
       // 股息率小于等于0的排名设为较差排名（dvSorted.length + 1）
-      const dvRank = (stock.dividendYield || 0) <= 0 ? (dvSorted.length + 1) : (dvRankMap.get(stock.code) || (dvSorted.length + 1));
+      const dvRank =
+        (stock.dividendYield || 0) <= 0
+          ? dvSorted.length + 1
+          : dvRankMap.get(stock.code) || dvSorted.length + 1;
       // 预测股息率小于等于0的排名设为较差排名（pdSorted.length + 1）
-      const pdRank = (stock.predictDividendRatio || 0) <= 0 ? (pdSorted.length + 1) : (pdRankMap.get(stock.code) || (pdSorted.length + 1));
+      const pdRank =
+        (stock.predictDividendRatio || 0) <= 0
+          ? pdSorted.length + 1
+          : pdRankMap.get(stock.code) || pdSorted.length + 1;
 
       return {
         ...stock,
@@ -385,7 +429,7 @@ export class StockBetterService {
         pbRank,
         dvRank,
         pdRank,
-        totalRank: peRank + pbRank  + pdRank,
+        totalRank: peRank + pbRank + pdRank,
       };
     });
 
@@ -399,7 +443,9 @@ export class StockBetterService {
     const paginatedData = stocksWithRank.slice(startIndex, endIndex);
 
     // 移除排名字段，返回原始数据结构（保留dividendYield字段）
-    const data = paginatedData.map(({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock);
+    const data = paginatedData.map(
+      ({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock,
+    );
 
     return {
       data,
@@ -413,7 +459,10 @@ export class StockBetterService {
   /**
    * 获取股票历史数据
    */
-  async getStockHistory(code: string, limit: number = 365): Promise<StockDayPepbData[]> {
+  async getStockHistory(
+    code: string,
+    limit: number = 365,
+  ): Promise<StockDayPepbData[]> {
     if (limit === 0) {
       // 返回全部数据（按升序）
       const sql = `
@@ -423,7 +472,7 @@ export class StockBetterService {
       `;
       return this.databaseService.query<StockDayPepbData>(sql, [code]);
     }
-    
+
     // 获取最近的数据（按降序）
     const sql = `
       SELECT * FROM stock_day_pepb_data 
@@ -431,11 +480,14 @@ export class StockBetterService {
       ORDER BY date DESC 
       LIMIT ?
     `;
-    const recentData = await this.databaseService.query<StockDayPepbData>(sql, [code, limit]);
-    
+    const recentData = await this.databaseService.query<StockDayPepbData>(sql, [
+      code,
+      limit,
+    ]);
+
     // 然后按升序排序返回
-    return recentData.sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+    return recentData.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
   }
 
@@ -473,7 +525,7 @@ export class StockBetterService {
     endDate: string,
   ): Promise<Map<string, StockDayPepbData[]>> {
     const result = new Map<string, StockDayPepbData[]>();
-    
+
     if (codes.length === 0) {
       return result;
     }
@@ -486,9 +538,12 @@ export class StockBetterService {
         AND code IN (${placeholders})
       ORDER BY code ASC, date ASC
     `;
-    
+
     const params = [startDate, endDate, ...codes];
-    const stocks = await this.databaseService.query<StockDayPepbData>(sql, params);
+    const stocks = await this.databaseService.query<StockDayPepbData>(
+      sql,
+      params,
+    );
 
     // 按股票代码分组
     for (const stock of stocks) {
@@ -509,7 +564,7 @@ export class StockBetterService {
     date: string,
   ): Promise<Map<string, StockDayPepbData | null>> {
     const result = new Map<string, StockDayPepbData | null>();
-    
+
     if (codes.length === 0) {
       return result;
     }
@@ -526,15 +581,18 @@ export class StockBetterService {
       )
       SELECT * FROM ranked WHERE rn = 1
     `;
-    
+
     const params = [date, ...codes];
-    const stocks = await this.databaseService.query<StockDayPepbData>(sql, params);
+    const stocks = await this.databaseService.query<StockDayPepbData>(
+      sql,
+      params,
+    );
 
     // 填充结果
     for (const code of codes) {
       result.set(code, null);
     }
-    
+
     for (const stock of stocks) {
       result.set(stock.code, stock);
     }
@@ -549,9 +607,14 @@ export class StockBetterService {
     codes: string[],
     t1: string,
     t2: string,
-  ): Promise<Map<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }>> {
-    const result = new Map<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }>();
-    
+  ): Promise<
+    Map<string, { t1: StockDayPepbData | null; t2: StockDayPepbData | null }>
+  > {
+    const result = new Map<
+      string,
+      { t1: StockDayPepbData | null; t2: StockDayPepbData | null }
+    >();
+
     if (codes.length === 0) {
       return result;
     }
@@ -574,7 +637,7 @@ export class StockBetterService {
       )
       SELECT * FROM ranked_t1 WHERE rn = 1
     `;
-    
+
     // 查询2：获取每个股票 <= t2 的最新数据（limit 1）
     const sqlT2 = `
       WITH ranked_t2 AS (
@@ -586,11 +649,11 @@ export class StockBetterService {
       )
       SELECT * FROM ranked_t2 WHERE rn = 1
     `;
-    
+
     // 并行执行两个查询
     const paramsT1 = [t1, ...codes];
     const paramsT2 = [t2, ...codes];
-    
+
     const [t1DataList, t2DataList] = await Promise.all([
       this.databaseService.query<StockDayPepbData>(sqlT1, paramsT1),
       this.databaseService.query<StockDayPepbData>(sqlT2, paramsT2),
@@ -599,11 +662,11 @@ export class StockBetterService {
     // 将查询结果转换为Map以便快速查找
     const t1DataMap = new Map<string, StockDayPepbData>();
     const t2DataMap = new Map<string, StockDayPepbData>();
-    
+
     for (const data of t1DataList) {
       t1DataMap.set(data.code, data);
     }
-    
+
     for (const data of t2DataList) {
       t2DataMap.set(data.code, data);
     }
@@ -628,14 +691,18 @@ export class StockBetterService {
     const columns = Object.keys(data[0]);
     const placeholders = columns.map(() => '?').join(', ');
     const sql = `INSERT OR REPLACE INTO stock_day_pepb_data (${columns.join(', ')}) VALUES (${placeholders})`;
-    
+
     const insert = this.databaseService.getDatabase().prepare(sql);
-    const transaction = this.databaseService.getDatabase().transaction((items: StockDayPepbData[]) => {
-      for (const item of items) {
-        const values = columns.map(col => item[col as keyof StockDayPepbData]);
-        insert.run(...values);
-      }
-    });
+    const transaction = this.databaseService
+      .getDatabase()
+      .transaction((items: StockDayPepbData[]) => {
+        for (const item of items) {
+          const values = columns.map(
+            (col) => item[col as keyof StockDayPepbData],
+          );
+          insert.run(...values);
+        }
+      });
 
     transaction(data);
   }
@@ -649,14 +716,18 @@ export class StockBetterService {
     const columns = Object.keys(data[0]);
     const placeholders = columns.map(() => '?').join(', ');
     const sql = `INSERT OR REPLACE INTO stock_bonus_data (${columns.join(', ')}) VALUES (${placeholders})`;
-    
+
     const insert = this.databaseService.getDatabase().prepare(sql);
-    const transaction = this.databaseService.getDatabase().transaction((items: StockBonusData[]) => {
-      for (const item of items) {
-        const values = columns.map(col => item[col as keyof StockBonusData]);
-        insert.run(...values);
-      }
-    });
+    const transaction = this.databaseService
+      .getDatabase()
+      .transaction((items: StockBonusData[]) => {
+        for (const item of items) {
+          const values = columns.map(
+            (col) => item[col as keyof StockBonusData],
+          );
+          insert.run(...values);
+        }
+      });
 
     transaction(data);
   }
@@ -666,7 +737,10 @@ export class StockBetterService {
    * @param code 指数代码（可选，不传则获取所有指数数据）
    * @param limit 限制返回的数据条数（可选，0表示无限制）
    */
-  async getIndexValuationData(code?: string, limit: number = 0): Promise<IndexValuationData[]> {
+  async getIndexValuationData(
+    code?: string,
+    limit: number = 0,
+  ): Promise<IndexValuationData[]> {
     let sql = `
       SELECT * FROM index_valuation_data
     `;
@@ -698,8 +772,8 @@ export class StockBetterService {
       ORDER BY code
     `;
     const results = await this.databaseService.query<any>(sql);
-    
-    return results.map(row => ({
+
+    return results.map((row) => ({
       code: row.code,
       codeName: row.codeName,
     }));
@@ -708,7 +782,9 @@ export class StockBetterService {
   /**
    * 获取指数估值数据的时间范围
    */
-  async getIndexValuationDateRange(code?: string): Promise<{ minDate: string; maxDate: string }> {
+  async getIndexValuationDateRange(
+    code?: string,
+  ): Promise<{ minDate: string; maxDate: string }> {
     let sql = `
       SELECT MIN(date) as minDate, MAX(date) as maxDate
       FROM index_valuation_data
@@ -720,8 +796,11 @@ export class StockBetterService {
       params.push(code);
     }
 
-    const result = await this.databaseService.queryOne<{ minDate: string; maxDate: string }>(sql, params);
-    
+    const result = await this.databaseService.queryOne<{
+      minDate: string;
+      maxDate: string;
+    }>(sql, params);
+
     return {
       minDate: result?.minDate || '',
       maxDate: result?.maxDate || '',
@@ -737,21 +816,25 @@ export class StockBetterService {
     lastUpdateDate: string;
     tableSize: number;
   }> {
-    const stockCount = await this.databaseService.queryOne<{ count: number }>(
-      'SELECT COUNT(*) as count FROM stock_day_pepb_data'
-    )?.count || 0;
+    const stockCount =
+      (await this.databaseService.queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM stock_day_pepb_data',
+      )?.count) || 0;
 
-    const bonusCount = await this.databaseService.queryOne<{ count: number }>(
-      'SELECT COUNT(*) as count FROM stock_bonus_data'
-    )?.count || 0;
+    const bonusCount =
+      (await this.databaseService.queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM stock_bonus_data',
+      )?.count) || 0;
 
-    const lastUpdateDate = await this.databaseService.queryOne<{ maxDate: string }>(
-      'SELECT MAX(date) as maxDate FROM stock_day_pepb_data'
-    )?.maxDate || '';
+    const lastUpdateDate =
+      (await this.databaseService.queryOne<{ maxDate: string }>(
+        'SELECT MAX(date) as maxDate FROM stock_day_pepb_data',
+      )?.maxDate) || '';
 
-    const tableSize = await this.databaseService.queryOne<{ page_count: number }>(
-      'SELECT page_count FROM pragma_page_count()'
-    )?.page_count || 0;
+    const tableSize =
+      (await this.databaseService.queryOne<{ page_count: number }>(
+        'SELECT page_count FROM pragma_page_count()',
+      )?.page_count) || 0;
 
     return {
       stockCount,
@@ -798,11 +881,13 @@ export class StockBetterService {
       ORDER BY date DESC
       LIMIT ?
     `;
-    const recentData = await this.databaseService.query<Hushen300>(sql, [limit]);
+    const recentData = await this.databaseService.query<Hushen300>(sql, [
+      limit,
+    ]);
 
     // 按升序排序返回
-    return recentData.sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+    return recentData.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
   }
 
@@ -846,8 +931,8 @@ export class StockBetterService {
     const recentData = await this.databaseService.query<Zz500>(sql, [limit]);
 
     // 按升序排序返回
-    return recentData.sort((a, b) =>
-      new Date(a.date).getTime() - new Date(b.date).getTime()
+    return recentData.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
   }
 
@@ -857,7 +942,9 @@ export class StockBetterService {
   async findAllPbByDateRange(
     startDate: string,
     endDate: string,
-  ): Promise<{ date: string; middlePB: number; equalWeightAveragePB: number }[]> {
+  ): Promise<
+    { date: string; middlePB: number; equalWeightAveragePB: number }[]
+  > {
     const sql = `
       SELECT date, middlePB, equalWeightAveragePB
       FROM stock_a_all_pb
@@ -865,7 +952,11 @@ export class StockBetterService {
         AND date <= ?
       ORDER BY date ASC
     `;
-    return this.databaseService.query<{ date: string; middlePB: number; equalWeightAveragePB: number }>(sql, [startDate, endDate]);
+    return this.databaseService.query<{
+      date: string;
+      middlePB: number;
+      equalWeightAveragePB: number;
+    }>(sql, [startDate, endDate]);
   }
 
   /**
@@ -887,7 +978,7 @@ export class StockBetterService {
   async getDividendRatioHistory(code: string): Promise<DividendRatioData[]> {
     // 转换为eastmoney格式的代码
     const eastmoneyCode = this.convertToEastmoneyCode(code);
-    
+
     const sql = `
       SELECT
         SECUCODE as secucode,
@@ -902,27 +993,29 @@ export class StockBetterService {
       WHERE SECUCODE = ?
       ORDER BY REPORT_DATE DESC
     `;
-    
+
     const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
-    
+
     // 转换为前端需要的格式
-    return rawData.map(item => ({
+    return rawData.map((item) => ({
       code: this.convertFromEastmoneyCode(item.secucode),
       date: item.reportDate,
       codeName: item.securityNameAbbr || '',
       dividendPayRatio: item.dividendPayImple,
       dividendImple: item.dividendImple,
-      parentNetProfit: item.parentNetProfit
+      parentNetProfit: item.parentNetProfit,
     }));
   }
 
   /**
    * 获取最新的股息支付率数据
    */
-  async getLatestDividendRatio(code: string): Promise<DividendRatioData | null> {
+  async getLatestDividendRatio(
+    code: string,
+  ): Promise<DividendRatioData | null> {
     // 转换为eastmoney格式的代码
     const eastmoneyCode = this.convertToEastmoneyCode(code);
-    
+
     const sql = `
       SELECT
         SECUCODE as secucode,
@@ -936,13 +1029,13 @@ export class StockBetterService {
       ORDER BY REPORT_DATE DESC
       LIMIT 1
     `;
-    
+
     const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
-    
+
     if (rawData.length === 0) {
       return null;
     }
-    
+
     const item = rawData[0];
     return {
       code: this.convertFromEastmoneyCode(item.secucode),
@@ -950,7 +1043,7 @@ export class StockBetterService {
       codeName: item.securityNameAbbr || '',
       dividendPayRatio: item.dividendPayImple,
       dividendImple: item.dividendImple,
-      parentNetProfit: item.parentNetProfit
+      parentNetProfit: item.parentNetProfit,
     };
   }
 
@@ -1008,7 +1101,7 @@ export class StockBetterService {
   async getEpsPredictData(code: string): Promise<any[]> {
     // 转换为eastmoney格式的代码
     const eastmoneyCode = this.convertToEastmoneyCode(code);
-    
+
     const sql = `
       SELECT
         SECUCODE as secucode,
@@ -1034,11 +1127,11 @@ export class StockBetterService {
       WHERE SECUCODE = ?
       ORDER BY ORG_NAME_ABBR
     `;
-    
+
     const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
-    
+
     // 转换为前端需要的格式
-    return rawData.map(item => ({
+    return rawData.map((item) => ({
       secucode: item.secucode,
       securityNameAbbr: item.securityNameAbbr || '',
       orgNameAbbr: item.orgNameAbbr || '',
@@ -1057,7 +1150,7 @@ export class StockBetterService {
       year4: item.year4 || '',
       yearMark4: item.yearMark4 || '',
       eps4: item.eps4,
-      pe4: item.pe4
+      pe4: item.pe4,
     }));
   }
 
@@ -1067,7 +1160,7 @@ export class StockBetterService {
   async getLatestEpsPredictData(code: string): Promise<any[]> {
     // 转换为eastmoney格式的代码
     const eastmoneyCode = this.convertToEastmoneyCode(code);
-    
+
     const sql = `
       SELECT
         SECUCODE as secucode,
@@ -1093,11 +1186,11 @@ export class StockBetterService {
       WHERE SECUCODE = ?
       ORDER BY ORG_NAME_ABBR
     `;
-    
+
     const rawData = await this.databaseService.query<any>(sql, [eastmoneyCode]);
-    
+
     // 转换为前端需要的格式
-    return rawData.map(item => ({
+    return rawData.map((item) => ({
       secucode: item.secucode,
       securityNameAbbr: item.securityNameAbbr || '',
       orgNameAbbr: item.orgNameAbbr || '',
@@ -1116,7 +1209,7 @@ export class StockBetterService {
       year4: item.year4 || '',
       yearMark4: item.yearMark4 || '',
       eps4: item.eps4,
-      pe4: item.pe4
+      pe4: item.pe4,
     }));
   }
 
@@ -1153,15 +1246,15 @@ export class StockBetterService {
       FROM equity_bond_spread
       ORDER BY date DESC
     `;
-    
+
     if (limit > 0) {
       sql += ` LIMIT ${limit}`;
     }
-    
+
     const rawData = await this.databaseService.query<any>(sql);
-    
+
     // 转换为前端需要的格式
-    return rawData.map(item => ({
+    return rawData.map((item) => ({
       date: item.date,
       code: item.code,
       close: item.close,
@@ -1173,7 +1266,7 @@ export class StockBetterService {
       peSpreadAverage: item.peSpreadAverage,
       dvSpreadStandardDeviation: item.dvSpreadStandardDeviation,
       dvTtmSpreadStandardDeviation: item.dvTtmSpreadStandardDeviation,
-      peSpreadStandardDeviation: item.peSpreadStandardDeviation
+      peSpreadStandardDeviation: item.peSpreadStandardDeviation,
     }));
   }
 
@@ -1184,7 +1277,7 @@ export class StockBetterService {
   async findBanksByDate(
     date: string,
     page: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
   ): Promise<{
     data: StockDayPepbDataRecord[];
     total: number;
@@ -1194,7 +1287,7 @@ export class StockBetterService {
   }> {
     // 1. 获取所有银行股的代码
     const bankCodes = await this.databaseService.query<{ code: string }>(
-      `SELECT DISTINCT code FROM stockinfo WHERE codeName LIKE '%银行%'`
+      `SELECT DISTINCT code FROM stockinfo WHERE codeName LIKE '%银行%'`,
     );
 
     if (bankCodes.length === 0) {
@@ -1207,13 +1300,13 @@ export class StockBetterService {
       };
     }
 
-    const codeList = bankCodes.map(row => row.code);
+    const codeList = bankCodes.map((row) => row.code);
     const placeholders = codeList.map(() => '?').join(',');
 
     // 2. 查询这些银行股在指定日期的数据
     const allStocks = await this.databaseService.query<StockDayPepbData>(
       `SELECT * FROM stock_day_pepb_data WHERE date = ? AND code IN (${placeholders})`,
-      [date, ...codeList]
+      [date, ...codeList],
     );
 
     if (allStocks.length === 0) {
@@ -1274,7 +1367,9 @@ export class StockBetterService {
     const pb = currentData.pbMRQ;
 
     // 2. 先查询该股票在 date 之前的最早数据日期，用于边界裁剪
-    const earliestRecord = await this.databaseService.queryOne<{ minDate: string }>(
+    const earliestRecord = await this.databaseService.queryOne<{
+      minDate: string;
+    }>(
       'SELECT MIN(date) as minDate FROM stock_day_pepb_data WHERE code = ? AND date <= ?',
       [code, date],
     );
@@ -1304,8 +1399,10 @@ export class StockBetterService {
     const close_20250407 = closeMap.get('2025-04-07') ?? null;
 
     // 比较当前 close 是否低于特定日期
-    const close_lower_than_20240924 = close != null && close_20240924 != null ? close < close_20240924 : null;
-    const close_lower_than_20250407 = close != null && close_20250407 != null ? close < close_20250407 : null;
+    const close_lower_than_20240924 =
+      close != null && close_20240924 != null ? close < close_20240924 : null;
+    const close_lower_than_20250407 =
+      close != null && close_20250407 != null ? close < close_20250407 : null;
 
     // 解析目标日期
     const targetDate = new Date(date);
@@ -1351,15 +1448,19 @@ export class StockBetterService {
         return {
           period,
           years,
-          closePercentile: total > 0 && close != null
-            ? Math.round(((stats?.closeLeCount || 0) / total) * 100 * 100) / 100
-            : null,
-          pePercentile: total > 0 && pe != null
-            ? Math.round(((stats?.peLeCount || 0) / total) * 100 * 100) / 100
-            : null,
-          pbPercentile: total > 0 && pb != null
-            ? Math.round(((stats?.pbLeCount || 0) / total) * 100 * 100) / 100
-            : null,
+          closePercentile:
+            total > 0 && close != null
+              ? Math.round(((stats?.closeLeCount || 0) / total) * 100 * 100) /
+                100
+              : null,
+          pePercentile:
+            total > 0 && pe != null
+              ? Math.round(((stats?.peLeCount || 0) / total) * 100 * 100) / 100
+              : null,
+          pbPercentile:
+            total > 0 && pb != null
+              ? Math.round(((stats?.pbLeCount || 0) / total) * 100 * 100) / 100
+              : null,
           count: total,
           actualStartDate: startDate,
         };
@@ -1389,7 +1490,7 @@ export class StockBetterService {
     allStocks: StockDayPepbData[],
     date: string,
     page: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
   ): Promise<{
     data: StockDayPepbDataRecord[];
     total: number;
@@ -1398,21 +1499,31 @@ export class StockBetterService {
     totalPages: number;
   }> {
     // 正数PE股票（用于排名）
-    const positivePEStocks = allStocks.filter(stock => (stock.peTTM || 0) >= 0);
+    const positivePEStocks = allStocks.filter(
+      (stock) => (stock.peTTM || 0) >= 0,
+    );
     // 正数PB股票（用于排名）
-    const positivePBStocks = allStocks.filter(stock => (stock.pbMRQ || 0) >= 0);
+    const positivePBStocks = allStocks.filter(
+      (stock) => (stock.pbMRQ || 0) >= 0,
+    );
 
     // 计算PE排名（只对正数PE排序）
-    const peSorted = [...positivePEStocks].sort((a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity));
+    const peSorted = [...positivePEStocks].sort(
+      (a, b) => (a.peTTM || Infinity) - (b.peTTM || Infinity),
+    );
     // 计算PB排名（只对正数PB排序）
-    const pbSorted = [...positivePBStocks].sort((a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity));
+    const pbSorted = [...positivePBStocks].sort(
+      (a, b) => (a.pbMRQ || Infinity) - (b.pbMRQ || Infinity),
+    );
 
     // 根据查询日期动态确定分红统计年份范围
     const queryDate = new Date(date);
     const queryYear = queryDate.getFullYear();
     const queryMonth = queryDate.getMonth() + 1;
     const isSecondHalfYear = queryMonth >= 5;
-    const dividendYearThreshold = isSecondHalfYear ? queryYear - 1 : queryYear - 2;
+    const dividendYearThreshold = isSecondHalfYear
+      ? queryYear - 1
+      : queryYear - 2;
 
     // 获取所有股票的分红汇总数据
     const bonusSummarySql = `
@@ -1424,10 +1535,16 @@ export class StockBetterService {
       WHERE dateStr > ?
       GROUP BY code
     `;
-    const bonusSummaries = await this.databaseService.query<any>(bonusSummarySql, [dividendYearThreshold.toString()]);
+    const bonusSummaries = await this.databaseService.query<any>(
+      bonusSummarySql,
+      [dividendYearThreshold.toString()],
+    );
 
     // 创建分红汇总映射
-    const bonusMap = new Map<string, { totalAmount: number; totalStockDividend: number }>();
+    const bonusMap = new Map<
+      string,
+      { totalAmount: number; totalStockDividend: number }
+    >();
     for (const summary of bonusSummaries) {
       bonusMap.set(summary.code, {
         totalAmount: summary.totalAmount || 0,
@@ -1436,13 +1553,14 @@ export class StockBetterService {
     }
 
     // 计算股息率并添加到股票对象
-    const stocksWithDividendYield = allStocks.map(stock => {
+    const stocksWithDividendYield = allStocks.map((stock) => {
       const bonus = bonusMap.get(stock.code);
       const closePrice = stock.close || 0;
       let dividendYield = 0;
 
       if (bonus && closePrice > 0) {
-        dividendYield = (bonus.totalAmount / closePrice) + (bonus.totalStockDividend || 0);
+        dividendYield =
+          bonus.totalAmount / closePrice + (bonus.totalStockDividend || 0);
       }
 
       return {
@@ -1458,7 +1576,9 @@ export class StockBetterService {
       FROM eastmoney_eps_predict
       WHERE YEAR = ?
     `;
-    const epsResults = await this.databaseService.query<any>(epsSql, [epsQueryYear]);
+    const epsResults = await this.databaseService.query<any>(epsSql, [
+      epsQueryYear,
+    ]);
 
     const epsMap = new Map<string, number>();
     for (const row of epsResults) {
@@ -1482,7 +1602,10 @@ export class StockBetterService {
       WHERE REPORT_DATE >= ? and REPORT_DATE < ?
       GROUP BY SECUCODE
     `;
-    const dividendRatioResults = await this.databaseService.query<any>(dividendRatioSql, [startDateStr, endDateStr]);
+    const dividendRatioResults = await this.databaseService.query<any>(
+      dividendRatioSql,
+      [startDateStr, endDateStr],
+    );
 
     const dividendRatioMap = new Map<string, number>();
     for (const row of dividendRatioResults) {
@@ -1495,7 +1618,7 @@ export class StockBetterService {
     }
 
     // 计算预测股息率
-    const stocksWithPredictDividend = stocksWithDividendYield.map(stock => {
+    const stocksWithPredictDividend = stocksWithDividendYield.map((stock) => {
       const eps = epsMap.get(stock.code) || 0;
       const dividendPayRatio = dividendRatioMap.get(stock.code) || 0;
       const closePrice = stock.close || 0;
@@ -1523,10 +1646,18 @@ export class StockBetterService {
         GROUP BY SECUCODE
       )
     `;
-    const bankFinancialResults = await this.databaseService.query<any>(bankFinancialSql);
+    const bankFinancialResults =
+      await this.databaseService.query<any>(bankFinancialSql);
 
     // 创建银行财务数据映射（key: 本地代码格式 "sh.600000"）
-    const bankFinancialMap = new Map<string, { coreCapitalRatio: string; nonPerfLoanRatio: string; loanLossCoverRatio: string }>();
+    const bankFinancialMap = new Map<
+      string,
+      {
+        coreCapitalRatio: string;
+        nonPerfLoanRatio: string;
+        loanLossCoverRatio: string;
+      }
+    >();
     for (const row of bankFinancialResults) {
       const localCode = this.convertFromEastmoneyCode(row.SECUCODE);
       if (localCode) {
@@ -1539,7 +1670,7 @@ export class StockBetterService {
     }
 
     // 将银行财务数据附加到股票对象
-    const stocksWithBankFinancial = stocksWithPredictDividend.map(stock => {
+    const stocksWithBankFinancial = stocksWithPredictDividend.map((stock) => {
       const bankFin = bankFinancialMap.get(stock.code);
       if (bankFin) {
         return {
@@ -1553,14 +1684,18 @@ export class StockBetterService {
     });
 
     // 股息率排名
-    const dvSorted = [...stocksWithBankFinancial].sort((a, b) => b.dividendYield - a.dividendYield);
+    const dvSorted = [...stocksWithBankFinancial].sort(
+      (a, b) => b.dividendYield - a.dividendYield,
+    );
     const dvRankMap = new Map<string, number>();
     dvSorted.forEach((stock, index) => {
       dvRankMap.set(stock.code, index + 1);
     });
 
     // 预测股息率排名
-    const pdSorted = [...stocksWithBankFinancial].sort((a, b) => b.predictDividendRatio - a.predictDividendRatio);
+    const pdSorted = [...stocksWithBankFinancial].sort(
+      (a, b) => b.predictDividendRatio - a.predictDividendRatio,
+    );
     const pdRankMap = new Map<string, number>();
     pdSorted.forEach((stock, index) => {
       pdRankMap.set(stock.code, index + 1);
@@ -1579,11 +1714,23 @@ export class StockBetterService {
     });
 
     // 计算综合排名
-    const stocksWithRank = stocksWithBankFinancial.map(stock => {
-      const peRank = (stock.peTTM || 0) < 0 ? 9999 : (peRankMap.get(stock.code) || (positivePEStocks.length + 1));
-      const pbRank = (stock.pbMRQ || 0) < 0 ? 9999 : (pbRankMap.get(stock.code) || (positivePBStocks.length + 1));
-      const dvRank = (stock.dividendYield || 0) <= 0 ? (dvSorted.length + 1) : (dvRankMap.get(stock.code) || (dvSorted.length + 1));
-      const pdRank = (stock.predictDividendRatio || 0) <= 0 ? (pdSorted.length + 1) : (pdRankMap.get(stock.code) || (pdSorted.length + 1));
+    const stocksWithRank = stocksWithBankFinancial.map((stock) => {
+      const peRank =
+        (stock.peTTM || 0) < 0
+          ? 9999
+          : peRankMap.get(stock.code) || positivePEStocks.length + 1;
+      const pbRank =
+        (stock.pbMRQ || 0) < 0
+          ? 9999
+          : pbRankMap.get(stock.code) || positivePBStocks.length + 1;
+      const dvRank =
+        (stock.dividendYield || 0) <= 0
+          ? dvSorted.length + 1
+          : dvRankMap.get(stock.code) || dvSorted.length + 1;
+      const pdRank =
+        (stock.predictDividendRatio || 0) <= 0
+          ? pdSorted.length + 1
+          : pdRankMap.get(stock.code) || pdSorted.length + 1;
 
       return {
         ...stock,
@@ -1605,7 +1752,9 @@ export class StockBetterService {
     const paginatedData = stocksWithRank.slice(startIndex, endIndex);
 
     // 移除排名字段
-    const data = paginatedData.map(({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock);
+    const data = paginatedData.map(
+      ({ peRank, pbRank, dvRank, pdRank, totalRank, ...stock }) => stock,
+    );
 
     return {
       data,
